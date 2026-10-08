@@ -793,5 +793,73 @@ updateTotal();
 })();
 </script>
 
+<style>
+.errc{display:inline-flex;align-items:center;gap:4px;margin-left:10px;padding:1px 9px;border-radius:999px;font-size:.8rem;font-weight:700;background:#fbe7e5;color:#b3261e;border:1px solid #efb6b0;white-space:nowrap}
+.errc.zero{background:#e3f4e8;color:#1e7b3c;border-color:#a9d8b6}
+.errsum{margin:8px 0 0;padding:8px 12px;border-radius:8px;background:#fbe7e5;border:1px solid #efb6b0;color:#7a1a14;font-size:.95rem}
+.errsum.zero{background:#e3f4e8;border-color:#a9d8b6;color:#155c2c}
+</style>
+<script>
+/* ===== Fehlerzähler: zählt, wie oft eine Aufgabe mit falschen Antworten geprüft wurde ===== */
+(function(){
+  if(typeof TASKS==="undefined" || typeof state==="undefined") return;
+  const KEY="kfz-fehler-v1:"+document.title;
+  let F={}; try{ F=JSON.parse(localStorage.getItem(KEY)||"{}")||{}; }catch(e){ F={}; }
+  const save=()=>{ try{ localStorage.setItem(KEY, JSON.stringify(F)); }catch(e){} };
+  const pending={};
+
+  function wrongUnits(ti){
+    return TASKS[ti].units.filter((u,ui)=>!u.self && unitScore(ti,ui) < u.pts - 1e-9).length;
+  }
+  function badge(ti){
+    const h=document.querySelector("#task"+ti+" h2 > span:first-child"); if(!h) return;
+    let b=h.querySelector(".errc");
+    const n=(F[ti]&&F[ti].n)||0, tries=(F[ti]&&F[ti].t)||0;
+    if(!tries){ if(b) b.remove(); return; }
+    if(!b){ b=document.createElement("span"); b.className="errc"; h.appendChild(b); }
+    b.classList.toggle("zero", n===0);
+    b.textContent = n===0 ? "✓ ohne Fehler" : `✗ ${n}× falsch`;
+    b.title = `${tries} Prüfung(en), davon ${n} mit Fehlern · ${(F[ti].w||0)} falsche Einzelantworten`;
+  }
+  /* Klick auf „Prüfen“ merken */
+  document.addEventListener("click",e=>{
+    const b=e.target.closest('.actions button[onclick^="check"]'); if(!b) return;
+    const sec=b.closest("section.card"); if(!sec) return;
+    pending[+sec.id.replace("task","")]=true;
+  },true);
+  /* Jede echte Auswertung zählen */
+  const origUpdate=window.updateTask;
+  window.updateTask=function(ti){
+    origUpdate(ti);
+    if(!pending[ti]) return;
+    pending[ti]=false;
+    const w=wrongUnits(ti);
+    F[ti]=F[ti]||{n:0,t:0,w:0};
+    F[ti].t++; if(w>0){ F[ti].n++; F[ti].w+=w; }
+    save(); badge(ti);
+  };
+  /* Auswertung ergänzen */
+  const origResult=window.showResult;
+  window.showResult=function(){
+    origResult();
+    let tot=0, wrong=0;
+    document.querySelectorAll("#resbody table tr").forEach((tr,ti)=>{
+      const n=(F[ti]&&F[ti].n)||0; tot+=n; wrong+=(F[ti]&&F[ti].w)||0;
+      const td=document.createElement("td"); td.className="note"; td.style.whiteSpace="nowrap";
+      td.textContent = n ? `✗ ${n}× falsch` : (F[ti]&&F[ti].t ? "✓" : "");
+      tr.appendChild(td);
+    });
+    const p=document.createElement("p"); p.className="errsum"+(tot?"":" zero");
+    p.innerHTML = tot ? `<b>Fehlversuche gesamt: ${tot}</b> (${wrong} falsche Einzelantworten)` : "<b>Keine Fehlversuche</b> – alles beim ersten Prüfen richtig.";
+    const t=document.querySelector("#resbody .tbl"); if(t) t.parentNode.insertBefore(p,t);
+  };
+  /* Lehrkraft-Reset löscht auch den Zähler */
+  document.addEventListener("click",e=>{
+    if(e.target && e.target.id==="tbtn"){ const pin=document.getElementById("tpin"); if(pin && pin.value==="kfz2026"){ try{ localStorage.removeItem(KEY); }catch(_){} } }
+  },true);
+  TASKS.forEach((_,ti)=>badge(ti));
+})();
+</script>
+
 </body>
 </html>
