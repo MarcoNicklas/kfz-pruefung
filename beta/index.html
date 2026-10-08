@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kfz-Prüfungsvorbereitung (Beta)</title>
+<meta name="description" content="Übungen und Prüfungen zur Gesellenprüfung Teil II – Kfz-Mechatroniker/in">
+<style>
+:root{
+  --bg:#f3f5f8; --card:#ffffff; --ink:#1b2430; --muted:#5b6778; --line:#d5dbe3;
+  --pri:#1f4e78; --pri-soft:#e6eef6; --ok:#1e7b3c; --ok-soft:#e3f4e8; --warn:#8a5a00; --warn-soft:#fff4dc;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+a{color:var(--pri)}
+header.top{background:var(--pri);color:#fff;padding:28px 16px 24px}
+.wrap{max-width:1040px;margin:0 auto}
+header.top h1{margin:0 0 6px;font-size:1.6rem;letter-spacing:.2px}
+header.top p{margin:0;opacity:.88;max-width:640px}
+.nav{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.nav .wrap{padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:8px 16px;font:inherit;font-size:.95rem;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.pill.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.pill .cnt{font-size:.78rem;background:rgba(0,0,0,.08);border-radius:999px;padding:0 7px}
+.pill.on .cnt{background:rgba(255,255,255,.2)}
+.search{margin-left:auto;flex:1 1 200px;max-width:300px}
+.search input{width:100%;font:inherit;font-size:.95rem;border:1px solid #b9c3cf;border-radius:999px;padding:7px 14px}
+main{max-width:1040px;margin:0 auto;padding:20px 16px 40px}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 0 12px}
+.sec-head h2{margin:0;font-size:1.25rem}
+.sec-head p{margin:0;color:var(--muted);font-size:.92rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;position:relative}
+.card .kicker{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.card h3{margin:0;font-size:1.08rem;line-height:1.3}
+.card p{margin:0;color:#384353;font-size:.93rem}
+.meta{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:.78rem;border:1px solid var(--line);border-radius:999px;padding:1px 9px;color:var(--muted);background:#f8fafc}
+.tag.new{border-color:#a9d8b6;background:var(--ok-soft);color:var(--ok);font-weight:600}
+.tag.lock{border-color:#edd08f;background:var(--warn-soft);color:var(--warn)}
+.card .go{margin-top:auto;padding-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{appearance:none;border:1px solid var(--pri);background:var(--pri);color:#fff;border-radius:8px;padding:8px 14px;font:inherit;font-size:.93rem;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.ghost{background:#fff;color:var(--pri)}
+.btn.small{padding:4px 10px;font-size:.84rem}
+.related{font-size:.85rem;color:var(--muted)}
+.related a{white-space:nowrap}
+.card.exam{border-top:4px solid var(--pri)}
+.card.topic{border-top:4px solid var(--ok)}
+.empty{color:var(--muted);font-size:.93rem;padding:12px 0}
+.info{background:var(--pri-soft);border:1px solid #c7d7e8;border-radius:10px;padding:12px 14px;font-size:.92rem;margin:0 0 16px}
+.info b{color:var(--pri)}
+section{margin-bottom:28px}
+footer{max-width:1040px;margin:0 auto;padding:0 16px 40px;color:var(--muted);font-size:.85rem}
+details.teacher{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+details.teacher summary{cursor:pointer;font-weight:600;color:var(--ink)}
+details.teacher ol{margin:8px 0 4px;padding-left:20px}
+details.teacher code{background:#eef2f6;border-radius:4px;padding:1px 5px;font-size:.85em}
+@media (max-width:600px){ header.top h1{font-size:1.3rem} .search{max-width:none;margin-left:0} .grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <h1>Kfz-Prüfungsvorbereitung <span style="font-size:.7em;background:#ffe45c;color:#1b2430;border-radius:6px;padding:2px 8px;vertical-align:middle">BETA</span></h1>
+  <p>Gesellenprüfung Teil II · Kfz-Mechatroniker/in – erst die Themen üben, dann Prüfungen unter echten Bedingungen schreiben.</p>
+</div></header>
+
+<nav class="nav"><div class="wrap">
+  <button class="pill on" data-view="alle">Alles</button>
+  <button class="pill" data-view="ueben">📘 Üben <span class="cnt" id="c_ueben">0</span></button>
+  <button class="pill" data-view="pruefen">📝 Prüfen <span class="cnt" id="c_pruefen">0</span></button>
+  <div class="search"><input type="search" id="q" placeholder="Suchen, z. B. Glühkerze, Diesel …" aria-label="Suchen"></div>
+</div></nav>
+
+<main>
+  <section id="sec_ueben">
+    <div class="sec-head"><h2>📘 Üben – Themen</h2><p>Überblick lesen, Aufgaben beliebig oft prüfen und wiederholen.</p></div>
+    <div class="grid" id="g_ueben"></div>
+  </section>
+
+  <section id="sec_pruefen">
+    <div class="sec-head"><h2>📝 Prüfen – Gesellenprüfungen</h2><p>60 Minuten, 100 Punkte – wie in der echten Prüfung.</p></div>
+    <div class="info"><b>Prüfungsmodus:</b> Jede Aufgabe kann nur <b>einmal</b> abgegeben werden. Danach ist sie gesperrt – auch nach dem Neuladen. Nimm dir Zeit, nutze die Anlagen und dein Tabellenbuch. Tipp: Vorher das passende Thema unter „Üben“ wiederholen.</div>
+    <div class="grid" id="g_pruefen"></div>
+  </section>
+
+  <section id="sec_mebis">
+    <div class="sec-head"><h2>🎓 mebis-Pakete</h2><p>Für die Einbindung mit Anmeldung, Speicherung und Lehrerübersicht.</p></div>
+    <div class="info"><b>Testversion:</b> Hier ausprobieren – ohne mebis wird der Stand nur im Browser gespeichert. In mebis meldet sich jeder Schüler mit seinem mebis-Konto an, sein Stand wird gespeichert und beim nächsten Öffnen geladen, und du siehst alle Ergebnisse in mebis.</div>
+    <div class="grid">
+      <article class="card topic" data-s="mebis scorm pumpe düse übung"><div class="kicker">Übung · SCORM-Paket</div><h3>Pumpe-Düse-Einspritzsystem</h3><div class="go"><a class="btn" href="mebis/kfz-uebung-pumpe-duese.zip" download>ZIP herunterladen</a></div></article>
+      <article class="card exam" data-s="mebis scorm prüfung"><div class="kicker">Prüfung · SCORM-Paket</div><h3>Dieseleinspritzung – Winter 2022</h3><div class="go"><a class="btn" href="mebis/kfz-pruefung-dieseleinspritzung-2022.zip" download>ZIP herunterladen</a></div></article>
+      <article class="card exam" data-s="mebis scorm prüfung"><div class="kicker">Prüfung · SCORM-Paket</div><h3>Common-Rail-System</h3><div class="go"><a class="btn" href="mebis/kfz-pruefung-common-rail.zip" download>ZIP herunterladen</a></div></article>
+      <article class="card exam" data-s="mebis scorm prüfung"><div class="kicker">Prüfung · SCORM-Paket</div><h3>Cabrio mit HV</h3><div class="go"><a class="btn" href="mebis/kfz-pruefung-cabrio-hv.zip" download>ZIP herunterladen</a></div></article>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <details class="teacher">
+    <summary>Für Lehrkräfte: neue Themen und Prüfungen hinzufügen</summary>
+    <ol>
+      <li>Im GitHub-Repository den Ordner <code>themen</code> (Übungen) oder <code>pruefungen</code> öffnen.</li>
+      <li><b>Add file → Upload files</b> – die HTML-Datei hochladen und mit „Commit changes“ bestätigen.</li>
+      <li>Nach 1–2 Minuten erscheint sie hier automatisch (Titel aus dem Dateinamen, z. B. <code>glueh-anlage.html</code> → „Glueh anlage“).</li>
+      <li>Optional für eine schöne Karte: <code>inhalte.js</code> öffnen (Stift-Symbol), einen Block kopieren und Titel, Beschreibung usw. anpassen.</li>
+    </ol>
+    Ausführliche Anleitung: <a id="readme" href="#">README im Repository</a>
+  </details>
+</footer>
+
+<script src="inhalte.js"></script>
+<script>
+(function(){
+  const DATA = window.INHALTE || {themen:[], pruefungen:[]};
+  const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+  const byFile = {}; (DATA.themen||[]).forEach(t=>byFile[t.datei]=t);
+
+  /* Repository aus der GitHub-Pages-Adresse ableiten (user.github.io/repo/...) */
+  const host = location.hostname, parts = location.pathname.split("/").filter(Boolean);
+  const gh = host.endsWith(".github.io") ? {owner: host.split(".")[0], repo: parts[0]||"", base: parts.slice(1, parts.length && parts[parts.length-1].includes(".") ? -1 : undefined).join("/")} : null;
+  if(gh) document.getElementById("readme").href = `https://github.com/${gh.owner}/${gh.repo}/tree/main/${gh.base}`;
+
+  function titleFromFile(f){
+    const n = decodeURIComponent(f.split("/").pop().replace(/\.html?$/i,"")).replace(/[-_]+/g," ").trim();
+    return n.charAt(0).toUpperCase()+n.slice(1);
+  }
+  function topicCard(t){
+    const tags = [t.bereich, t.aufgaben?`${t.aufgaben} Aufgaben`:"", t.punkte?`${t.punkte} Punkte`:""].filter(Boolean);
+    return `<article class="card topic" data-s="${esc([t.titel,t.bereich,t.beschreibung,(t.schlagworte||[]).join(" ")].join(" ").toLowerCase())}">
+      <div class="kicker">Thema</div>
+      <h3>${esc(t.titel||titleFromFile(t.datei))}</h3>
+      ${t.beschreibung?`<p>${esc(t.beschreibung)}</p>`:""}
+      <div class="meta">${t.neu?'<span class="tag new">neu</span>':""}${tags.map(x=>`<span class="tag">${esc(x)}</span>`).join("")}${(t.schlagworte||[]).map(x=>`<span class="tag">#${esc(x)}</span>`).join("")}</div>
+      <div class="go"><a class="btn" href="${esc(t.datei)}#ueberblick">Überblick</a><a class="btn ghost" href="${esc(t.datei)}#aufgaben">Übungsaufgaben</a></div>
+    </article>`;
+  }
+  function examCard(p){
+    const tags = [p.termin, p.dauer?`${p.dauer} min`:"", p.punkte?`${p.punkte} Punkte`:""].filter(Boolean);
+    const rel = (p.themen||[]).filter(f=>byFile[f]).map(f=>`<a href="${esc(f)}#ueberblick">${esc(byFile[f].titel)}</a>`);
+    return `<article class="card exam" data-s="${esc([p.titel,p.pruefung,p.termin,p.fahrzeug,p.beschreibung].join(" ").toLowerCase())}">
+      <div class="kicker">${esc(p.pruefung||"Prüfung")}</div>
+      <h3>${esc(p.titel||titleFromFile(p.datei))}</h3>
+      ${p.fahrzeug?`<p><b>${esc(p.fahrzeug)}</b></p>`:""}
+      ${p.beschreibung?`<p>${esc(p.beschreibung)}</p>`:""}
+      <div class="meta">${p.neu?'<span class="tag new">neu</span>':""}${tags.map(x=>`<span class="tag">${esc(x)}</span>`).join("")}<span class="tag lock">🔒 einmalige Abgabe</span></div>
+      ${rel.length?`<div class="related">Vorher üben: ${rel.join(", ")}</div>`:""}
+      <div class="go"><a class="btn" href="${esc(p.datei)}">Prüfung starten</a></div>
+    </article>`;
+  }
+
+  const lists = {ueben: (DATA.themen||[]).slice(), pruefen: (DATA.pruefungen||[]).slice()};
+  function render(){
+    document.getElementById("g_ueben").innerHTML = lists.ueben.map(topicCard).join("") || '<p class="empty">Noch keine Themen vorhanden.</p>';
+    document.getElementById("g_pruefen").innerHTML = lists.pruefen.map(examCard).join("") || '<p class="empty">Noch keine Prüfungen vorhanden.</p>';
+    document.getElementById("c_ueben").textContent = lists.ueben.length;
+    document.getElementById("c_pruefen").textContent = lists.pruefen.length;
+    filter();
+  }
+
+  /* Neue, noch nicht eingetragene Dateien automatisch aus GitHub finden */
+  async function discover(folder, key){
+    if(!gh || !gh.repo) return;
+    const path = (gh.base?gh.base+"/":"")+folder, ck = "kfz-dir:"+path;
+    let files = null;
+    try{ const c = JSON.parse(sessionStorage.getItem(ck)||"null"); if(c && Date.now()-c.t < 10*60*1000) files = c.f; }catch(e){}
+    if(!files){
+      try{
+        const r = await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${path}`);
+        if(!r.ok) return;
+        files = (await r.json()).filter(x=>x.type==="file" && /\.html?$/i.test(x.name)).map(x=>x.name);
+        try{ sessionStorage.setItem(ck, JSON.stringify({t:Date.now(), f:files})); }catch(e){}
+      }catch(e){ return; }
+    }
+    const known = new Set(lists[key].map(x=>x.datei));
+    let added = false;
+    files.forEach(n=>{ const d = folder+"/"+n; if(!known.has(d)){ lists[key].push({datei:d, titel:titleFromFile(n), neu:true}); added = true; } });
+    if(added) render();
+  }
+
+  /* Ansicht & Suche */
+  let view = "alle";
+  function filter(){
+    const q = document.getElementById("q").value.trim().toLowerCase();
+    document.getElementById("sec_ueben").style.display = view==="pruefen" ? "none" : "";
+    document.getElementById("sec_pruefen").style.display = view==="ueben" ? "none" : "";
+    document.querySelectorAll(".card").forEach(c=>{ c.style.display = !q || c.dataset.s.includes(q) || c.querySelector("h3").textContent.toLowerCase().includes(q) ? "" : "none"; });
+  }
+  document.querySelectorAll(".pill").forEach(b=>b.addEventListener("click",()=>{
+    view = b.dataset.view; document.querySelectorAll(".pill").forEach(x=>x.classList.toggle("on", x===b)); filter();
+    try{ history.replaceState(null,"", view==="alle" ? location.pathname : "#"+view); }catch(e){}
+  }));
+  document.getElementById("q").addEventListener("input", filter);
+  const h = location.hash.slice(1); if(h==="ueben"||h==="pruefen"){ const b=document.querySelector(`.pill[data-view="${h}"]`); if(b) b.click(); }
+
+  render();
+  discover("themen","ueben");
+  discover("pruefungen","pruefen");
+})();
+</script>
+</body>
+</html>
