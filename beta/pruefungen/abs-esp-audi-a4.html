@@ -247,7 +247,30 @@ function num(s){
   const m=t.match(/-?\d+(\.\d+)?/); return m?parseFloat(m[0]):NaN;
 }
 const val = id => { const e=document.getElementById(id); return e?e.value:""; };
-const has = (id, re) => new RegExp(re).test(norm(val(id)));
+/* ===== Rechtschreib-Toleranz (kleine Tippfehler werden akzeptiert) ===== */
+function fzSquash(s){ return s.replace(/sz/g,"z").replace(/ck/g,"k").replace(/tz/g,"z").replace(/dt/g,"t").replace(/th/g,"t").replace(/ph/g,"f").replace(/ie/g,"i").replace(/([aeiou])h(?=[^aeiouh]|$)/g,"$1").replace(/([a-z])\1+/g,"$1"); }
+function fzTol(n){ return n<5?0:n<8?1:2; }
+function fzDist(p,t){ const m=p.length; let pp=null, pr=[]; for(let i=0;i<=m;i++) pr[i]=i; let best=pr[m];
+  for(let j=1;j<=t.length;j++){ const c=[0];
+    for(let i=1;i<=m;i++){ let v=Math.min(pr[i]+1,c[i-1]+1,pr[i-1]+(p[i-1]===t[j-1]?0:1));
+      if(pp&&i>1&&p[i-1]===t[j-2]&&p[i-2]===t[j-1]) v=Math.min(v,pp[i-2]+1); c[i]=v; }
+    if(c[m]<best) best=c[m]; pp=pr; pr=c; }
+  return best; }
+function fzIncl(s,k){ if(!s||!k) return false; if(s.includes(k)) return true;
+  if(!/^[a-z]+$/.test(k)) return false;
+  const sq=fzSquash(k); if(sq.length>=3 && fzSquash(s).includes(sq)) return true;
+  const tol=fzTol(k.length); return tol>0 && fzDist(k,s)<=tol; }
+function fzAlts(re){ const out=[]; let d=0, cur=""; for(let i=0;i<re.length;i++){ const ch=re[i];
+    if(ch==="\\"){ cur+=ch+(re[i+1]||""); i++; continue; } if(ch==="(") d++; if(ch===")") d--;
+    if(ch==="|"&&d===0){ out.push(cur); cur=""; } else cur+=ch; } out.push(cur); return out; }
+function fzHas(s,re){ if(!s) return false; let sq=null;
+  return fzAlts(re).some(a=>{
+    if(/^[a-z]+$/.test(a)) return fzIncl(s,a);
+    if(/^\^[a-z]{5,}$/.test(a)){ const k=a.slice(1); return fzDist(k,s.slice(0,k.length+fzTol(k.length)))<=fzTol(k.length); }
+    if(/^[a-z.*()|]+$/.test(a) && /[a-z]{3}/.test(a)){ try{ sq=sq||fzSquash(s); return new RegExp(fzSquash(a)).test(sq); }catch(e){ return false; } }
+    return false; }); }
+function fzIdx(s,CATS){ if(!s) return -1; let i=CATS.findIndex(ks=>ks.some(k=>s.includes(k))); if(i>=0) return i; return CATS.findIndex(ks=>ks.some(k=>fzIncl(s,k))); }
+const has = (id, re) => { const s=norm(val(id)); return new RegExp(re).test(s) || fzHas(s,re); };
 const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
 function rng(id,a,b){ const n=num(val(id)); return n>=a&&n<=b; }
 function sel(id, opts, style){ return `<select id="${id}" style="${style||"max-width:180px"}"><option value="">–</option>${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select>`; }
