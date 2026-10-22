@@ -96,6 +96,30 @@ window.INHALTE = {
 
     /* ===== Bremsanlage (El. Parkbremse & ESP) ===== */
     {
+      datei: "pruefungen/bremse-pruefstand-hydraulik-winter-2020.html",
+      titel: "Bremsenprüfstand & ABS-Hydraulikschaltplan – Opel Astra",
+      termin: "Winter 2020",
+      pruefung: "Gesellenprüfung Teil II",
+      fahrzeug: "Opel Astra H 1,4 (EZ 06/2007)",
+      beschreibung: "Auto zieht beim Bremsen nach links: Prüfstand auswerten, StVZO-Grenzwerte, Faustsattel, Bremsscheibe messen/tauschen, Hydraulikwege einzeichnen, 2/2-Wegeventil, Bremsflüssigkeit, Bremsmoment.",
+      dauer: 60,
+      punkte: 100,
+      kategorie: ["bremse"],
+      neu: true
+    },
+    {
+      datei: "pruefungen/bremse-bkv-hydraulik-polo-sommer-2022.html",
+      titel: "Bremskraftverstärker (Pneumatik) & Hydraulik – VW Polo",
+      termin: "Sommer 2022 (Teil I)",
+      pruefung: "Gesellenprüfung Teil I",
+      fahrzeug: "VW Polo (2016)",
+      beschreibung: "Schlechte Bremswirkung: Unterdruck-Bremskraftverstärker (Aufbau, Funktion, Prüfung), Tandemhauptzylinder, Druckdifferenz und Kraft berechnen, Trommelbremse, Nasssiedepunkt.",
+      dauer: 60,
+      punkte: 100,
+      kategorie: ["bremse"],
+      neu: true
+    },
+    {
       datei: "pruefungen/bremse-epb-golf7-winter-2025.html",
       titel: "Hinterradbremse mit EPB – Golf VII",
       termin: "Winter 2025",
