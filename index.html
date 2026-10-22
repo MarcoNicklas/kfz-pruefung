@@ -102,26 +102,28 @@ details.teacher code{background:#eef2f6;border-radius:4px;padding:1px 5px;font-s
 body.locked > :not(#gate){display:none!important}
 @media (max-width:600px){ header.top h1{font-size:1.3rem} .search{max-width:none;margin-left:0} .grid{grid-template-columns:1fr} }
 </style>
+<script src="inhalte.js"></script>
+<script src="zugang.js"></script>
 <script>
-/* Zugangsschutz: Seite erst nach Passwort-Eingabe anzeigen */
-window.KFZ_HASH="b25706e3b54368c24de24cd3e264da14f7481560894766d1e0ab022183eb1e4e";
-(function(){var ok=false;try{ok=localStorage.getItem("kfz-zugang")===KFZ_HASH||sessionStorage.getItem("kfz-zugang")===KFZ_HASH;}catch(e){}
-document.documentElement.dataset.ok=ok?"1":"";})();
+/* Zugangsschutz: Seite erst nach Passwort-Eingabe anzeigen (Passwörter je Themenbereich, siehe zugang.js) */
+document.documentElement.dataset.ok = KFZ_ZUGANG.freigaben().length ? "1" : "";
 </script>
 </head>
 <body>
 <div id="gate">
 <form class="box" id="gateform" autocomplete="off">
 <h2>🔒 Kfz-Prüfungsvorbereitung</h2>
-<p>Zugang nur für die Klasse. Bitte das Passwort eingeben, das du von deiner Lehrkraft bekommen hast.</p>
+<p id="gatetext">Zugang nur für die Klasse. Bitte das Passwort eingeben, das du von deiner Lehrkraft bekommen hast. Jedes Passwort schaltet einen Themenbereich frei.</p>
 <input type="password" id="pw" placeholder="Passwort" aria-label="Passwort" autofocus>
 <label class="row"><input type="checkbox" id="remember" checked> Auf diesem Gerät angemeldet bleiben</label>
 <button class="btn" type="submit">Öffnen</button>
+<button class="btn ghost" type="button" id="gatecancel" style="display:none">Abbrechen</button>
 <div class="err" id="pwerr"></div>
 </form>
 </div>
 <script>
-if(document.documentElement.dataset.ok){ document.getElementById("gate").remove(); } else { document.body.classList.add("locked"); }
+if(document.documentElement.dataset.ok){ document.getElementById("gate").style.display="none"; } else { document.body.classList.add("locked"); }
+if(location.hash==="#gesperrt"){ document.getElementById("pwerr").textContent="Für diesen Bereich hast du noch kein Passwort eingegeben."; }
 </script>
 
 <header class="top"><div class="wrap">
@@ -139,6 +141,7 @@ if(document.documentElement.dataset.ok){ document.getElementById("gate").remove(
 <div class="search"><input type="search" id="q" placeholder="Suchen, z. B. AdBlue, ESP, Gurtstraffer …" aria-label="Suchen"></div>
 </div>
 <div class="wrap row2" id="cats"><span class="fl">Thema:</span></div>
+<div class="wrap row2" id="frei" style="font-size:.85rem;color:var(--muted);gap:8px"></div>
 </nav>
 
 <main>
@@ -164,14 +167,14 @@ if(document.documentElement.dataset.ok){ document.getElementById("gate").remove(
 <li>Nach 1–2 Minuten erscheint sie hier automatisch (Titel aus dem Dateinamen) unter „Weitere Themen“.</li>
 <li>Für eine schöne Karte und den Themenfilter: <code>inhalte.js</code> öffnen (Stift-Symbol), einen Block kopieren, Titel/Beschreibung anpassen und <code>kategorie: ["diesel"]</code> (bzw. <code>"bremse"</code>, <code>"klima"</code>, <code>"airbag"</code>) setzen.</li>
 </ol>
-<p style="margin:6px 0 0"><b>Passwort ändern:</b> In <code>index.html</code> steht oben <code>KFZ_HASH</code> – das ist der SHA-256-Wert des Passworts. Neuen Wert z. B. mit einem SHA-256-Online-Rechner erzeugen und dort sowie oben in jeder Prüfungsdatei ersetzen. Hinweis: Der Schutz hält Unbefugte von der Startseite fern, ist aber kein Hochsicherheitsschutz (das Repository ist öffentlich).</p>
+<p style="margin:6px 0 0"><b>Passwörter je Themenbereich:</b> In <code>zugang.js</code> steht für jeden Bereich (alle, diesel, bremse, klima, airbag, sonst) der SHA-256-Wert seines Passworts. Zum Ändern einen neuen Wert (z. B. mit einem SHA-256-Online-Rechner) eintragen. Welche Prüfung zu welchem Bereich gehört, legt <code>kategorie</code> in <code>inhalte.js</code> fest. Hinweis: einfacher Zugangsschutz, kein Hochsicherheitsschutz (das Repository ist öffentlich).</p>
 Ausführliche Anleitung: <a id="readme" href="#">README im Repository</a>
 </details>
 <button class="logout" id="logout" title="Passwort auf diesem Gerät vergessen">Abmelden</button>
 </div>
 </footer>
 
-<script src="inhalte.js"></script>
+
 <script>
 (function(){
 /* ---------- Passwort-Sperre ---------- */
@@ -185,9 +188,11 @@ if(form){
     e.preventDefault();
     const pw=document.getElementById("pw").value.trim();
     const h=await sha256(pw);
-    if(h===window.KFZ_HASH){
-      try{ (document.getElementById("remember").checked?localStorage:sessionStorage).setItem("kfz-zugang",h); sessionStorage.setItem("kfz-zugang",h); }catch(_){}
-      document.getElementById("gate").remove(); document.body.classList.remove("locked");
+    const Z=KFZ_ZUGANG; const key=Object.keys(Z.H).find(k=>Z.H[k]===h);
+    if(key){
+      Z.speichern(h, document.getElementById("remember").checked);
+      history.replaceState(null, "", location.pathname + (key!=="alle" ? "#"+key : ""));
+      location.reload();
     } else {
       document.getElementById("pwerr").textContent="Passwort falsch – bitte nochmal versuchen.";
       form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
@@ -195,13 +200,16 @@ if(form){
     }
   });
 }
-document.getElementById("logout").addEventListener("click",()=>{ try{ localStorage.removeItem("kfz-zugang"); sessionStorage.removeItem("kfz-zugang"); }catch(_){} location.reload(); });
+document.getElementById("logout").addEventListener("click",()=>{ KFZ_ZUGANG.abmelden(); location.replace(location.pathname); });
+function openGate(){ const g=document.getElementById("gate"); g.style.display="flex"; document.getElementById("gatecancel").style.display="block"; document.getElementById("pwerr").textContent=""; const p=document.getElementById("pw"); p.value=""; p.focus(); }
+document.getElementById("gatecancel").addEventListener("click",()=>{ document.getElementById("gate").style.display="none"; });
 
 /* ---------- Inhalte ---------- */
 const DATA = window.INHALTE || {themen:[], pruefungen:[]};
 const CATS = DATA.kategorien || [];
 const CATBY = {}; CATS.forEach(c=>CATBY[c.id]=c);
 const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+const FREI = KFZ_ZUGANG.freigaben(), ALLE = FREI.includes("alle");
 const byFile = {}; (DATA.themen||[]).forEach(t=>byFile[t.datei]=t);
 
 const host = location.hostname, parts = location.pathname.split("/").filter(Boolean);
@@ -241,10 +249,20 @@ ${rel.length?`<div class="related">Vorher üben: ${rel.join(", ")}</div>`:""}
 
 /* Themen-Filterknöpfe */
 const catBar=document.getElementById("cats");
-const allCats=[{id:"alle",name:"Alle Themen"}].concat(CATS).concat([{id:"sonst",name:"Weitere Themen"}]);
+const allCats=[{id:"alle",name:"Alle Themen"}].concat(CATS).concat([{id:"sonst",name:"Weitere Themen"}])
+  .filter(c => ALLE || c.id==="alle" || FREI.includes(c.id));
+if(!ALLE && FREI.length<2) catBar.style.display="none";
 catBar.insertAdjacentHTML("beforeend", allCats.map(c=>`<button class="cat${c.id==="alle"?" on":""}" data-cat="${c.id}">${c.icon?c.icon+" ":""}${esc(c.name)}${c.detail?` <small>${esc(c.detail)}</small>`:""} <span class="cnt" id="cc_${c.id}">0</span></button>`).join(""));
 
-const lists = {ueben: (DATA.themen||[]).slice(), pruefen: (DATA.pruefungen||[]).slice()};
+const erlaubt = x => ALLE || FREI.includes((catsOf(x)[0]) || "sonst");
+const lists = {ueben: (DATA.themen||[]).filter(erlaubt), pruefen: (DATA.pruefungen||[]).filter(erlaubt)};
+/* Anzeige der freigeschalteten Bereiche */
+(function(){
+  const names = {alle:"Alle Bereiche", sonst:"Weitere Themen"}; CATS.forEach(c=>names[c.id]=c.name+(c.detail?" ("+c.detail+")":""));
+  const fr=document.getElementById("frei");
+  fr.innerHTML = `<span>🔓 Freigeschaltet: <b>${FREI.map(k=>esc(names[k]||k)).join(", ")}</b></span>` + (ALLE?"":` <button class="btn ghost small" id="morepw">+ weiteres Passwort</button>`);
+  const mb=document.getElementById("morepw"); if(mb) mb.addEventListener("click", openGate);
+})();
 function render(){
   document.getElementById("g_ueben").innerHTML = lists.ueben.map(topicCard).join("") || '<p class="empty">Noch keine Themen vorhanden.</p>';
   document.getElementById("g_pruefen").innerHTML = lists.pruefen.map(examCard).join("") || '<p class="empty">Noch keine Prüfungen vorhanden.</p>';
@@ -272,6 +290,7 @@ async function discover(folder, key){
   }
   const known = new Set(lists[key].map(x=>x.datei));
   let added = false;
+  if(!(ALLE || FREI.includes("sonst"))) return;
   files.forEach(n=>{ const d = folder+"/"+n; if(!known.has(d)){ lists[key].push({datei:d, titel:titleFromFile(n), neu:true}); added = true; } });
   if(added) render();
 }
