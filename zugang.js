@@ -50,4 +50,9 @@
     var kat = katVonDatei(decodeURIComponent(p));
     if (!darf(kat)) location.replace("../index.html#gesperrt");
   }
+
+  /* Hilfestellungen (Simulationen) auf Prüfungsseiten nachladen */
+  if (/\/pruefungen\/[^\/]+$/.test(p)) {
+    var hs = document.createElement("script"); hs.src = "../hilfen.js"; document.head.appendChild(hs);
+  }
 })();
