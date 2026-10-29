@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABS-Hydraulikschaltplan – Simulation</title>
+<script src="../inhalte.js"></script><script src="../zugang.js"></script><script>if(window.KFZ_ZUGANG&&!KFZ_ZUGANG.darf("bremse"))location.replace("../index.html#gesperrt");</script>
+<style>
+:root{
+  --c1:#2563eb; --c1l:#a5c4fb;   /* Bremskreis 1 blau */
+  --c2:#16a34a; --c2l:#9fe3b6;   /* Bremskreis 2 grün */
+  --ink:#1f2937; --mut:#6b7280; --pipe:#b9c0ca; --bg:#f3f5f8; --card:#fff; --line:#e3e7ec;
+  --hot:#f59e0b; --sel:#e11d48;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+header{max-width:1320px;margin:auto;padding:18px 16px 6px}
+h1{font-size:1.35rem;margin:0 0 2px}
+.sub{color:var(--mut);font-size:.92rem;margin:0}
+.wrap{max-width:1320px;margin:auto;padding:10px 16px 32px;display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:16px}
+@media(max-width:1000px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.controls .grp{display:flex;flex-wrap:wrap;gap:6px}
+button.m{font:inherit;font-size:.9rem;padding:7px 12px;border-radius:8px;border:1.5px solid #c9d0d9;background:#fff;color:var(--ink);cursor:pointer}
+button.m:hover{border-color:#8b95a3}
+button.m.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.m.abs.on{background:#7c2d12;border-color:#7c2d12}
+.opts{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:.9rem;color:var(--mut);margin-bottom:6px}
+select{font:inherit;font-size:.9rem;padding:4px 6px;border-radius:6px;border:1px solid #c9d0d9}
+svg#plan{width:100%;height:auto;display:block;user-select:none}
+/* Leitungen */
+.pb{fill:none;stroke:var(--pipe);stroke-width:4;stroke-linejoin:round;stroke-linecap:round}
+.pf{fill:none;stroke:var(--col);stroke-width:7.5;stroke-linejoin:round;stroke-linecap:round;opacity:0;transition:opacity .25s}
+.pl{fill:none;stroke:#fff;stroke-width:2.4;stroke-dasharray:7 11;stroke-linecap:round;opacity:0}
+.seg[data-s="1"] .pf,.seg[data-s="2"] .pf,.seg[data-s="3"] .pf{opacity:1}
+.seg[data-s="4"] .pf,.seg[data-s="5"] .pf{opacity:1;stroke:var(--coll);stroke-width:6}
+.seg[data-s="2"] .pl{opacity:.95;animation:fwd .7s linear infinite}
+.seg[data-s="3"] .pl{opacity:.95;animation:rev .7s linear infinite}
+.seg[data-s="4"] .pl{opacity:1;stroke:var(--col);animation:fwd .9s linear infinite}
+@keyframes fwd{to{stroke-dashoffset:-36}}
+@keyframes rev{to{stroke-dashoffset:36}}
+.paused .pl{animation-play-state:paused!important}
+/* Bauteile */
+.ink{fill:none;stroke:var(--ink);stroke-width:1.8}
+.inkf{fill:#fff;stroke:var(--ink);stroke-width:1.8}
+.vbox{fill:#fff;stroke:var(--ink);stroke-width:1.8}
+.vsym{fill:none;stroke:var(--ink);stroke-width:2}
+.vsymf{fill:var(--ink)}
+.thin{stroke-width:1.2}
+.coil{fill:#fff;stroke:var(--ink);stroke-width:1.8;transition:fill .15s}
+.coil.en{fill:var(--hot)}
+.spring{fill:none;stroke:var(--ink);stroke-width:1.5}
+.lbl{font:700 15px system-ui,sans-serif;fill:var(--ink)}
+.lbl-s{font:600 12px system-ui,sans-serif;fill:var(--mut)}
+.lbl-big{font:800 17px system-ui,sans-serif;fill:var(--ink)}
+.badge circle{fill:#fff;stroke:var(--ink);stroke-width:1.6}
+.badge text{font:700 14px system-ui,sans-serif;fill:var(--ink);text-anchor:middle}
+.rotor{transform-box:fill-box;transform-origin:center}
+.run .rotor{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.comp,.wheel,.badge{cursor:help}
+.wheel{cursor:pointer}
+.selring{fill:none;stroke:var(--sel);stroke-width:2.5;stroke-dasharray:5 4;opacity:0}
+.wheel.sel .selring{opacity:1}
+#pedal{transform-box:view-box;transform-origin:668px 22px;transition:transform .35s}
+#pedal.pressed{transform:rotate(13deg)}
+.hint{font-size:.85rem;color:var(--mut);margin:8px 2px 0}
+/* Seitenleiste */
+h2{font-size:1.05rem;margin:0 0 6px}
+h3{font-size:.95rem;margin:14px 0 6px}
+#stat{font-size:.93rem}
+#stat b{color:#111}
+table{width:100%;border-collapse:collapse;font-size:.83rem}
+th,td{text-align:left;padding:4px 4px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:600}
+td.z{color:#b91c1c;font-weight:600}
+td.o{color:#15803d;font-weight:600}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.leg{display:grid;grid-template-columns:34px 1fr;gap:6px 8px;font-size:.84rem;align-items:center}
+.sw{height:8px;border-radius:4px}
+.box-sol{background:#f0f6ff;border:1px solid #cfe0fb;border-radius:8px;padding:8px 10px;font-size:.86rem;margin-top:10px}
+#tip{position:fixed;pointer-events:none;background:#111827;color:#fff;font-size:.82rem;line-height:1.35;padding:7px 9px;border-radius:7px;max-width:270px;z-index:10;opacity:0;transition:opacity .12s}
+</style>
+</head>
+<body>
+<header>
+  <a href="../pruefungen/bremse-pruefstand-hydraulik-winter-2020.html" style="font-size:.88rem;color:#1f4e78;text-decoration:none">← zur Prüfung Bremsenprüfstand &amp; Hydraulikschaltplan</a>
+  <h1>ABS/ESP-Hydraulikschaltplan – interaktive Simulation</h1>
+  <p class="sub">Prüfung Bremsen · Bremsenprüfstand &amp; ABS-Hydraulikschaltplan (Opel Astra) · Bauteile antippen/überfahren für Erklärungen</p>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="controls">
+      <div class="grp">
+        <button class="m" data-mode="ruhe">Ruhe (Pedal los)</button>
+        <button class="m" data-mode="normal">Fahrzeug bremst</button>
+      </div>
+      <div class="grp">
+        <button class="m abs" data-mode="halten">ABS: Druck halten</button>
+        <button class="m abs" data-mode="abbau">ABS: Druck abbauen</button>
+        <button class="m abs" data-mode="aufbau">ABS: Druck aufbauen</button>
+        <button class="m abs" data-mode="auto">ABS-Regelzyklus ▶</button>
+        <button class="m abs" data-mode="multi">ABS mehrere Räder ▶</button>
+      </div>
+    </div>
+    <div class="opts multi-opts" id="multiOpts" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 10px;color:var(--ink)">
+      <label><b>Situation:</b>
+        <select id="scen">
+          <option value="voll">Vollbremsung, trockene Straße (alle Räder)</option>
+          <option value="musplit">µ-Split: links Eis, rechts Asphalt</option>
+          <option value="kurve">Bremsen in der Rechtskurve (innen entlastet)</option>
+          <option value="eigen">Eigene Auswahl</option>
+        </select>
+      </label>
+      <span id="wchecks"></span>
+      <label title="Die Hinterräder werden gemeinsam nach dem Rad mit der schlechteren Haftung geregelt."><input type="checkbox" id="slow" checked> Select-Low an der Hinterachse</label>
+    </div>
+    <div class="opts">
+      <label>Geregeltes Rad:
+        <select id="selWheel">
+          <option>J17.92</option><option>J17.91</option><option selected>J17.90</option><option>J17.93</option>
+        </select>
+      </label>
+      <label>Tempo:
+        <select id="speed">
+          <option value="0.25">Zeitlupe ¼</option><option value="0.5" selected>Zeitlupe ½</option><option value="1">normal</option>
+        </select>
+      </label>
+      <button class="m" id="pause">❚❚ Pause</button>
+    </div>
+    <svg id="plan" viewBox="0 0 980 756" aria-label="Hydraulikschaltplan ABS"></svg>
+    <p class="hint">Weiße Striche = Fließrichtung der Bremsflüssigkeit · kräftige Farbe = Bremsdruck · helle Farbe = Rücklauf/Niederdruck · orange Spule = Magnetventil bestromt. Rad anklicken, um es als „geregeltes Rad“ zu wählen.</p>
+  </div>
+
+  <aside class="card">
+    <h2 id="statTitle">Ruhe</h2>
+    <div id="stat"></div>
+
+    <h3>Ventilstellungen &amp; Raddruck</h3>
+    <table>
+      <thead><tr><th>Rad</th><th>Einlassventil</th><th>Auslassventil</th><th>Druck</th></tr></thead>
+      <tbody id="vt"></tbody>
+    </table>
+    <div style="font-size:.84rem;margin-top:6px">Rückförderpumpe / Motor M9: <b id="pumpState">aus</b></div>
+
+    <h3>Druckverlauf <span id="chartName">J17.90</span></h3>
+    <svg id="chart" viewBox="0 0 320 110" style="width:100%;height:auto;background:#fafbfc;border:1px solid var(--line);border-radius:8px"></svg>
+
+    <h3>Legende</h3>
+    <div class="leg">
+      <div class="sw" style="background:var(--c1)"></div><div><b>Bremskreis 1</b> (blau) → J17.90 (VL), J17.93 (HR)</div>
+      <div class="sw" style="background:var(--c2)"></div><div><b>Bremskreis 2</b> (grün) → J17.91 (VR), J17.92 (HL) – Diagonalaufteilung</div>
+      <div class="sw" style="background:var(--c1l)"></div><div>Rücklauf/Niederdruck (hell)</div>
+      <div class="sw" style="background:var(--pipe)"></div><div>drucklos</div>
+      <div class="sw" style="background:var(--hot)"></div><div>Magnetspule bestromt</div>
+    </div>
+
+    <div class="box-sol" id="sol">
+      <b>Aufgabe a) – „Fahrzeug bremst“</b><br>
+      Blau (Kreis 1): J17.29 → Y4.9 → J17.90 und J17.29 → Y4.12 → J17.93<br>
+      Grün (Kreis 2): J17.29 → Y4.10 → J17.91 und J17.29 → Y4.11 → J17.92<br>
+      Einlassventile stromlos <b>offen</b>, Auslassventile stromlos <b>geschlossen</b>, Pumpe aus – Rücklaufleitungen bleiben drucklos.
+    </div>
+    <div class="box-sol" style="background:#fff7ed;border-color:#fed7aa">
+      <b>Aufgabe 16c) – Y4.19 öffnet</b><br>Rad J17.90 wählen und „ABS: Druck abbauen“: Der Bremsdruck am Rad <b>vorne links</b> wird abgebaut – das Rad blockiert nicht mehr.
+    </div>
+  </aside>
+</div>
+<div id="tip"></div>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('plan');
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);(parent||svg).appendChild(e);return e;}
+const W=980;
+const MX=(side,x)=>side==='L'?x:W-x;
+const mp=(side,d)=>side==='L'?d:d.replace(/([MLH])(-?[\d.]+)/g,(m,c,x)=>c+(W-parseFloat(x)));
+
+const WHEELS=[
+  {id:'J17.92',pos:'hinten links',side:'L',k:'A',x:120,ev:'Y4.11',av:'Y4.21',circ:2},
+  {id:'J17.91',pos:'vorne rechts',side:'L',k:'B',x:400,ev:'Y4.10',av:'Y4.20',circ:2},
+  {id:'J17.90',pos:'vorne links',side:'R',k:'B',x:580,ev:'Y4.9', av:'Y4.19',circ:1},
+  {id:'J17.93',pos:'hinten rechts',side:'R',k:'A',x:860,ev:'Y4.12',av:'Y4.22',circ:1}
+];
+const byId=id=>WHEELS.find(w=>w.id===id);
+const wOf=(side,k)=>WHEELS.find(w=>w.side===side&&w.k===k);
+const SIDE={L:{circ:2,col:'var(--c2)',coll:'var(--c2l)'},R:{circ:1,col:'var(--c1)',coll:'var(--c1l)'}};
+
+/* Ebenen */
+const gUnder=el('g',{}), gBox=el('g',{}), gPipes=el('g',{}), gComp=el('g',{}), gTop=el('g',{});
+
+/* Hydroaggregat-Rahmen */
+el('rect',{x:40,y:158,width:900,height:477,fill:'none',stroke:'#4b5563','stroke-width':1.4,'stroke-dasharray':'14 5 3 5'},gBox);
+const tBox=el('text',{x:130,y:176,class:'lbl-s'},gBox);tBox.textContent='Hydroaggregat ABS/ESP';
+
+/* Leitungs-Vorlagen (linke Seite = Bremskreis 2, rechte Seite gespiegelt = Bremskreis 1) */
+const TPL={
+  sup:'M460,100V140H400', supA:'M400,140H120V335', supB1:'M400,140V200', supB2:'M400,200V335',
+  inA:'M120,365V590', whA:'M120,590V647', oiA:'M120,590H180V555', ooA:'M180,525V480H260',
+  inB:'M400,365V590', whB:'M400,590V647', oiB:'M400,590H300V555', ooB:'M300,525V480H260',
+  ret:'M260,480V282', lpa:'M260,420H292', pout:'M260,238V200H400',
+  byA:'', byB:''
+};
+const SEG={};
+for(const side of ['L','R']){
+  for(const n in TPL){
+    let d=mp(side,TPL[n]);
+    if(n==='byA'||n==='byB'){const X=MX(side,n==='byA'?120:400);d=`M${X},300H${X-58}V400H${X}`;} // Bypass immer links (wie im Original)
+    const g=el('g',{class:'seg','data-s':'0',style:`--col:${SIDE[side].col};--coll:${SIDE[side].coll}`},gPipes);
+    el('path',{d,class:'pb'},g); el('path',{d,class:'pf'},g); el('path',{d,class:'pl'},g);
+    SEG[side+'.'+n]=g;
+  }
+}
+
+/* Hilfsfunktionen Bauteile */
+function badge(side,x,y,n,tip,lx,ly){
+  const X=MX(side,x), LX=MX(side,lx);
+  el('line',{x1:X,y1:y,x2:LX,y2:ly,stroke:'#374151','stroke-width':1.2},gComp);
+  const g=el('g',{class:'badge','data-tip':tip},gComp);
+  el('circle',{cx:X,cy:y,r:13},g);
+  const t=el('text',{x:X,y:y+5},g);t.textContent=n;
+}
+function checkValve(side,x,y,tip){
+  const X=MX(side,x);
+  const g=el('g',{class:'comp','data-tip':tip,transform:`translate(${X},${y})`},gComp);
+  el('rect',{x:-11,y:-12,width:22,height:24,fill:'transparent'},g);
+  el('path',{d:'M-8,-3L0,9L8,-3',class:'vsym'},g);
+  el('circle',{cx:0,cy:-5,r:5.5,class:'inkf'},g);
+}
+const VALVES=[];
+function filt(X,y,tip){
+  const g=el('g',{class:'comp','data-tip':tip||'<b>Sieb (Filter)</b><br>hält Schmutzpartikel von den Ventilen fern.'},gComp);
+  el('path',{d:`M${X},${y-7}L${X+6},${y}L${X},${y+7}L${X-6},${y}Z`,class:'inkf'},g);
+  el('line',{x1:X-6,y1:y,x2:X+6,y2:y,class:'vsym thin'},g);
+}
+/* 2/2-Wegeventil wie im Schaltplan: Feder links, zwei Schaltfelder, Magnetspule rechts.
+   Anschlüsse liegen immer am linken Feld; bei Bestromung schiebt sich das rechte Feld unter die Anschlüsse. */
+const BW=26;
+function valve(side,x,y,kind,name,tip){
+  const X=MX(side,x);
+  const g=el('g',{transform:`translate(${X},${y})`,'data-tip':tip,class:'comp'},gComp);
+  el('rect',{x:-50,y:-18,width:106,height:36,fill:'transparent'},g);
+  const spring=el('polyline',{class:'spring'},g);
+  const sl=el('g',{},g);
+  el('rect',{x:-BW/2,y:-15,width:BW,height:30,class:'vbox'},sl);
+  el('rect',{x:BW/2,y:-15,width:BW,height:30,class:'vbox'},sl);
+  const openSym=(cx,up)=>{el('line',{x1:cx,y1:-13,x2:cx,y2:13,class:'vsym'},sl);
+    el('path',{d:up?`M${cx-4},-4L${cx},-13L${cx+4},-4Z`:`M${cx-4},4L${cx},13L${cx+4},4Z`,class:'vsymf'},sl);};
+  const closedSym=cx=>el('path',{d:`M${cx},-15V-6M${cx-6},-6H${cx+6}M${cx},15V6M${cx-6},6H${cx+6}`,class:'vsym'},sl);
+  if(kind==='ev'){openSym(0,false);closedSym(BW);} else {closedSym(0);openSym(BW,true);}
+  const cx=BW*1.5;
+  const coil=el('rect',{x:cx,y:-10,width:12,height:20,class:'coil'},sl);
+  el('path',{d:`M${cx},10L${cx+12},-10`,class:'vsym thin'},sl);
+  const t=el('text',kind==='ev'?{x:20,y:46,class:'lbl'}:{x:20,y:74,class:'lbl','text-anchor':'middle'},g);
+  t.textContent=name;
+  const v={name,kind,coil,sl,spring,shift:0};setShift(v,0);VALVES.push(v);return v;
+}
+function setShift(v,s){
+  v.shift=s; v.sl.setAttribute('transform',`translate(${s.toFixed(2)},0)`);
+  const a=-44, e=-BW/2+s, n=6, pts=[];
+  for(let i=0;i<=n;i++){pts.push(`${(a+(e-a)*i/n).toFixed(1)},${i===0||i===n?0:(i%2?-6:6)}`);}
+  v.spring.setAttribute('points',pts.join(' '));
+}
+
+/* Hauptbremszylinder, Verstärker, Pedal */
+(function(){
+  const g=el('g',{class:'comp','data-tip':'<b>J17.29 Tandem-Hauptbremszylinder</b><br>mit Ausgleichsbehälter. Erzeugt beim Bremsen in zwei getrennten Kreisen Druck: Kreis 1 (blau) und Kreis 2 (grün).'},gComp);
+  el('rect',{x:440,y:26,width:100,height:20,rx:4,class:'inkf'},g);
+  el('line',{x1:465,y1:46,x2:465,y2:52,class:'ink'},g);el('line',{x1:515,y1:46,x2:515,y2:52,class:'ink'},g);
+  el('rect',{x:420,y:52,width:150,height:48,rx:4,class:'inkf'},g);
+  el('line',{x1:490,y1:52,x2:490,y2:100,class:'ink'},g);
+  el('rect',{x:440,y:66,width:14,height:20,fill:'#d1d5db',stroke:'#1f2937'},g);
+  el('rect',{x:505,y:66,width:14,height:20,fill:'#d1d5db',stroke:'#1f2937'},g);
+  const t=el('text',{x:410,y:84,class:'lbl-big','text-anchor':'end'},gComp);t.textContent='J17.29';
+  const b=el('g',{class:'comp','data-tip':'<b>Bremskraftverstärker</b><br>verstärkt die Pedalkraft mit Unterdruck.'},gComp);
+  el('ellipse',{cx:600,cy:76,rx:16,ry:36,class:'inkf'},b);
+  el('line',{x1:570,y1:76,x2:584,y2:76,class:'ink'},b);
+  const p=el('g',{id:'pedal',class:'comp','data-tip':'<b>Bremspedal</b>'},gComp);
+  el('line',{x1:616,y1:76,x2:661,y2:76,stroke:'#1f2937','stroke-width':3},p);
+  el('line',{x1:668,y1:22,x2:656,y2:132,stroke:'#1f2937','stroke-width':5,'stroke-linecap':'round'},p);
+  el('rect',{x:640,y:130,width:30,height:7,rx:2,fill:'#1f2937'},p);
+  el('circle',{cx:668,cy:22,r:4,fill:'#1f2937'},gComp);
+})();
+badge('L',330,112,'2','<b>Bremskreis 2</b> (grün)<br>versorgt J17.92 und J17.91',380,140);
+badge('R',330,112,'1','<b>Bremskreis 1</b> (blau)<br>versorgt J17.90 und J17.93',380,140);
+
+/* Motor M9 + Wellen */
+el('path',{d:'M282,256H384M282,264H384M380,252Q388,260 380,268M598,256H698M598,264H698M602,252Q594,260 602,268M440,256H466M440,264H466M444,252Q436,260 444,268M514,256H540M514,264H540M536,252Q544,260 536,268',stroke:'#4b5563','stroke-width':1.6,fill:'none'},gUnder);
+const motor=el('g',{class:'comp','data-tip':'<b>M9 Pumpenmotor</b><br>Elektromotor, treibt beide Rückförderpumpen (3) gemeinsam an. Läuft während der ABS-Regelung.'},gComp);
+el('circle',{cx:490,cy:260,r:24,class:'inkf'},motor);
+const mrot=el('g',{class:'rotor'},motor);
+el('path',{d:'M490,240V280M470,260H510',stroke:'#cbd5e1','stroke-width':3},mrot);
+const tm=el('text',{x:490,y:267,'text-anchor':'middle',class:'lbl-big'},motor);tm.textContent='M';
+const tm9=el('text',{x:490,y:226,'text-anchor':'middle',class:'lbl-big'},gComp);tm9.textContent='M9';
+
+/* Seitenbauteile */
+const PUMPS=[], LPAS={};
+for(const side of ['L','R']){
+  const A=wOf(side,'A'), B=wOf(side,'B');
+  const kreis=SIDE[side].circ;
+  // Pumpe
+  const X=MX(side,260);
+  const pg=el('g',{class:'comp','data-tip':`<b>(3) Rückförderpumpe Kreis ${kreis}</b><br>fördert beim Druckabbau die Bremsflüssigkeit aus dem Niederdruckspeicher zurück in den Bremskreis (Richtung Hauptbremszylinder) → Pedal pulsiert.`},gComp);
+  el('circle',{cx:X,cy:260,r:22,class:'inkf'},pg);
+  const pr=el('g',{class:'rotor'},pg);
+  el('path',{d:`M${X-13},260H${X+13}M${X},247V273`,stroke:'#cbd5e1','stroke-width':3},pr);
+  el('path',{d:`M${X-7},250L${X},238L${X+7},250Z`,fill:'#1f2937'},pg);
+  PUMPS.push(pg);
+  badge(side,200,236,'3','<b>(3) Rückförderpumpe</b>',240,250);
+  // Rückschlagventil vor Pumpe
+  filt(MX(side,260),334,'<b>Sieb (Filter)</b> vor der Rückförderpumpe');
+  // Niederdruckspeicher
+  const lg=el('g',{class:'comp','data-tip':`<b>(4) Dämpferkammer / Speicherkammer Kreis ${kreis}</b><br>nimmt beim Druckabbau kurzzeitig die Bremsflüssigkeit aus den Radbremsen auf, bis die Rückförderpumpe sie zurückfördert.`},gComp);
+  el('ellipse',{cx:MX(side,310),cy:420,rx:18,ry:12,class:'inkf'},lg);
+  LPAS[side]=el('ellipse',{cx:MX(side,310),cy:420,rx:16,ry:10,fill:SIDE[side].coll,opacity:0},lg);
+  el('line',{x1:MX(side,300),y1:428,x2:MX(side,320),y2:412,class:'spring'},lg);
+  badge(side,310,456,'4','<b>(4) Dämpferkammer</b>',310,432);
+  // Dämpferkammer + Drossel
+  const dg=el('g',{class:'comp','data-tip':`<b>(4) Dämpferkammer mit Drossel</b> (Druckseite der Pumpe)<br>glättet die Druckstöße der Rückförderpumpe und senkt Geräusche/Pedalrückwirkung.`},gComp);
+  el('ellipse',{cx:MX(side,315),cy:200,rx:16,ry:11,class:'inkf'},dg);
+  {const T=MX(side,360);el('path',{d:`M${T-8},190Q${T},197 ${T+8},190M${T-8},210Q${T},203 ${T+8},210`,class:'vsym'},dg);}
+  el('rect',{x:MX(side,350)-(side==='L'?0:20),y:186,width:20,height:28,fill:'transparent'},dg);
+  badge(side,300,176,'4','<b>(4) Dämpferkammer</b>',312,190);
+  // Ventile
+  for(const w of [A,B]){
+    const x=w.k==='A'?120:400;
+    w.evV=valve(side,x,350,'ev',w.ev,`<b>${w.ev} Einlassventil ${w.pos}</b> (${w.id})<br>2/2-Wegeventil, elektromagnetisch betätigt, Rückstellung durch Feder – <b>stromlos offen</b>. Bestromt → geschlossen: Druck zum Rad wird gesperrt (Druck halten).`);
+    w.avV=valve(side,w.k==='A'?180:300,540,'av',w.av,`<b>${w.av} Auslassventil ${w.pos}</b> (${w.id})<br>2/2-Wegeventil, elektromagnetisch betätigt, Rückstellung durch Feder – <b>stromlos geschlossen</b>. Bestromt → offen: Bremsflüssigkeit fließt zum Speicher (Druck abbauen).`);
+    const XL=MX(side,x);
+    filt(XL,327); filt(XL,373); filt(MX(side,w.k==='A'?180:300),570);
+    checkValve('L',XL-58,352,`<b>Rückschlagventil</b> parallel zu ${w.ev}<br>Beim Lösen der Bremse kann die Flüssigkeit schnell zum Hauptbremszylinder zurückfließen.`);
+  }
+}
+
+/* Räder */
+for(const w of WHEELS){
+  const kreisCol=SIDE[w.side].col;
+  const g=el('g',{class:'wheel','data-tip':`<b>${w.id} Radbremse ${w.pos}</b><br>Bremskreis ${w.circ}. Klicken = als geregeltes Rad wählen.`},gComp);
+  el('circle',{cx:w.x,cy:678,r:36,class:'selring'},g);
+  el('circle',{cx:w.x,cy:678,r:29,fill:'#fff',stroke:'#1f2937','stroke-width':2.5},g);
+  w.fill=el('circle',{cx:w.x,cy:678,r:17,fill:kreisCol,opacity:0},g);
+  el('circle',{cx:w.x,cy:678,r:17,fill:'none',stroke:'#1f2937','stroke-width':2},g);
+  el('rect',{x:w.x+40,y:652,width:10,height:52,rx:2,fill:'#eef0f3',stroke:'#9ca3af'},g);
+  w.bar=el('rect',{x:w.x+41,y:703,width:8,height:0,fill:kreisCol},g);
+  const t=el('text',{x:w.x,y:732,'text-anchor':'middle',class:'lbl-big'},g);t.textContent=w.id;
+  const t2=el('text',{x:w.x,y:750,'text-anchor':'middle',class:'lbl-s'},g);t2.textContent=w.pos;
+  g.addEventListener('click',()=>{setSel(w.id);});
+  w.g=g;
+}
+
+/* ---------- Simulation ---------- */
+let mode='ruhe', sel='J17.90', speed=0.5, paused=false;
+const P={}, phase={}; WHEELS.forEach(w=>{P[w.id]=0;phase[w.id]='off';});
+const lpa={L:0,R:0};
+const ABS=['halten','abbau','aufbau','auto','multi'];
+/* Mehrrad-Regelung: je Rad eigene Haftung und eigener Regeltakt */
+const GRIP={
+  trocken:{grip:1.0,d:[1.1,0.45,0.55,0.4],min:0.4,txt:'Asphalt'},
+  mittel:{grip:0.6,d:[0.8,0.4,0.8,0.45],min:0.25,txt:'wenig Haftung'},
+  eis:{grip:0.3,d:[0.45,0.35,1.0,0.55],min:0.1,txt:'Eis'}
+};
+const SCEN={
+  voll:{'J17.90':['trocken',1],'J17.91':['trocken',1.17],'J17.92':['trocken',0.86],'J17.93':['trocken',0.93]},
+  musplit:{'J17.90':['eis',1],'J17.92':['eis',0.9]},
+  kurve:{'J17.91':['mittel',1],'J17.93':['mittel',0.9]},
+  eigen:null
+};
+let multi={}, cyc={}, selectLow=true, scen='voll';
+const CYC=['build','hold','release','hold'];
+const REAR=['J17.92','J17.93'];
+function leader(w){
+  if(selectLow&&REAR.includes(w.id)){const c=REAR.filter(i=>multi[i]);if(!c.length)return null;c.sort((a,b)=>multi[a].grip-multi[b].grip);return c[0];}
+  return multi[w.id]?w.id:null;
+}
+function applyScen(){
+  const def=SCEN[scen];
+  if(def){multi={};for(const id in def){multi[id]={...GRIP[def[id][0]],s:def[id][1],g:def[id][0]};}}
+  cyc={};let k=0;for(const id in multi){cyc[id]={idx:0,t:-0.55*k};k++;}
+  buildChecks();
+}
+function buildChecks(){
+  document.getElementById('wchecks').innerHTML=WHEELS.map(w=>`<label style="margin-right:8px"><input type="checkbox" data-w="${w.id}" ${multi[w.id]?'checked':''}> ${w.id} <span style="color:#6b7280">${w.pos}</span></label>`).join('');
+  document.querySelectorAll('#wchecks input').forEach(c=>c.addEventListener('change',()=>{
+    scen='eigen';document.getElementById('scen').value='eigen';
+    if(c.checked){multi[c.dataset.w]={...GRIP.mittel,s:1+0.12*Object.keys(multi).length,g:'mittel'};cyc[c.dataset.w]={idx:0,t:0};}
+    else{delete multi[c.dataset.w];delete cyc[c.dataset.w];}
+    updWheelSel();updPanel(true);}));
+}
+function wPh(w){
+  if(mode==='auto') return w.id===sel?autoPh():null;
+  if(mode==='multi'){const L=leader(w);return L?CYC[cyc[L].idx]:null;}
+  return null;
+}
+const AUTO=[['build',1.4],['hold',0.6],['release',0.8],['hold',0.5]];
+let autoIdx=0, autoT=0;
+const autoPh=()=>AUTO[autoIdx][0];
+const absSel=w=>mode==='multi'?leader(w)!==null:(w.id===sel && ABS.includes(mode));
+function evClosed(w){if(!absSel(w))return false;if(mode==='halten'||mode==='abbau')return true;const a=wPh(w);return a==='hold'||a==='release';}
+function avOpen(w){if(!absSel(w))return false;return mode==='abbau'||wPh(w)==='release';}
+const pumpOn=()=>['abbau','aufbau','auto','multi'].includes(mode);
+
+function setMode(m){
+  if(ABS.includes(m)&&(m==='halten'||m==='abbau')&&P[sel]<0.6){WHEELS.forEach(w=>P[w.id]=Math.max(P[w.id],0.85));}
+  if(m==='auto'){autoIdx=0;autoT=0;}
+  if(m==='multi'){applyScen();}
+  document.getElementById('multiOpts').style.display=m==='multi'?'flex':'none';
+  mode=m;
+  document.querySelectorAll('button.m[data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
+  document.getElementById('pedal').classList.toggle('pressed',m!=='ruhe');
+  updWheelSel(); updPanel(true);
+}
+function setSel(id){sel=id;document.getElementById('selWheel').value=id;document.getElementById('chartName').textContent=id;hist.length=0;updWheelSel();updPanel(true);}
+function updWheelSel(){WHEELS.forEach(w=>w.g.classList.toggle('sel',mode==='multi'?absSel(w):(w.id===sel&&ABS.includes(mode))));document.getElementById('chartName').textContent=mode==='multi'?'aller Räder':'geregeltes Rad ('+sel+')';}
+
+function step(dt){
+  const pedal=mode!=='ruhe';
+  if(mode==='auto'){autoT+=dt;if(autoT>AUTO[autoIdx][1]){autoT=0;autoIdx=(autoIdx+1)%AUTO.length;}}
+  if(mode==='multi'){for(const id in cyc){const c=cyc[id],m=multi[id];c.t+=dt;if(c.t>m.d[c.idx]*m.s){c.t=0;c.idx=(c.idx+1)%4;}}}
+  for(const w of WHEELS){
+    let p=P[w.id], ph;
+    if(!pedal) ph=p>0.003?'return':'off';
+    else if(!absSel(w)||mode==='aufbau') ph=p<0.995?'build':'static';
+    else if(mode==='halten') ph='hold';
+    else if(mode==='abbau') ph=p>0.12?'release':'released';
+    else { const a=wPh(w); const L=mode==='multi'?multi[leader(w)]:null; const mn=L?L.min:0.22;
+      ph=a==='build'?(p<0.995?'build':'static'):a==='release'?(p>mn?'release':'released'):'hold'; }
+    if(ph==='build') p=Math.min(1,p+0.8*dt);
+    if(ph==='release'){p=Math.max(0.1,p-1.0*dt);lpa[w.side]=Math.min(1,lpa[w.side]+0.7*dt);}
+    if(ph==='return') p=Math.max(0,p-1.5*dt);
+    P[w.id]=p; phase[w.id]=ph;
+  }
+  if(mode==='multi'&&selectLow){const L=leader(WHEELS[0]);if(L){const o=REAR.find(i=>i!==L);P[o]=P[L];phase[o]=phase[L];}}
+  for(const s of ['L','R']){ if(pumpOn()) lpa[s]=Math.max(0,lpa[s]-0.35*dt); else if(!pedal) lpa[s]=Math.max(0,lpa[s]-0.5*dt); }
+}
+
+function setSeg(key,v){const g=SEG[key];if(g.dataset.s!==String(v))g.setAttribute('data-s',v);}
+function render(){
+  const pedal=mode!=='ruhe';
+  for(const side of ['L','R']){
+    const A=wOf(side,'A'),B=wOf(side,'B');
+    const pf=pumpOn()&&lpa[side]>0.01;
+    const a={ph:phase[A.id],p:P[A.id]}, b={ph:phase[B.id],p:P[B.id]};
+    const anyBuild=a.ph==='build'||b.ph==='build', anyRet=a.ph==='return'||b.ph==='return';
+    const S={};
+    S.sup=!pedal?(anyRet?3:0):anyBuild?2:pf?3:1;
+    S.supA=!pedal?(a.ph==='return'?3:0):a.ph==='build'?2:1;
+    S.supB1=!pedal?(b.ph==='return'?3:0):b.ph==='build'?2:pf?3:1;
+    S.supB2=!pedal?(b.ph==='return'?3:0):b.ph==='build'?2:1;
+    for(const [k,x,w] of [['A',a,A],['B',b,B]]){
+      S['in'+k]=x.ph==='build'?2:x.ph==='return'?3:x.ph==='released'?5:x.p>0.01?1:0;
+      S['wh'+k]=x.ph==='build'?2:(x.ph==='release'||x.ph==='return')?3:x.ph==='released'?5:x.p>0.01?1:0;
+      S['oi'+k]=x.ph==='release'?2:x.ph==='released'?5:x.p>0.01?1:0;
+      S['oo'+k]=x.ph==='release'?4:lpa[side]>0.01?5:0;
+      S['by'+k]=x.ph==='return'?3:(pedal&&!evClosed(w)&&x.p>0.01)?1:0;
+    }
+    S.ret=pf?4:lpa[side]>0.01?5:0;
+    S.lpa=(a.ph==='release'||b.ph==='release')?4:lpa[side]>0.01?5:0;
+    S.pout=pf?2:pedal?1:0;
+    for(const n in S) setSeg(side+'.'+n,S[n]);
+    LPAS[side].setAttribute('opacity',Math.min(1,lpa[side]*1.6).toFixed(2));
+  }
+  for(const w of WHEELS){
+    const ec=evClosed(w), ao=avOpen(w);
+    w.evV.coil.classList.toggle('en',ec); w.avV.coil.classList.toggle('en',ao);
+    for(const [v,on] of [[w.evV,ec],[w.avV,ao]]){const t=on?-BW:0; if(Math.abs(v.shift-t)>0.05) setShift(v,v.shift+(t-v.shift)*0.35); else if(v.shift!==t) setShift(v,t);}
+    w.fill.setAttribute('opacity',(P[w.id]*0.9).toFixed(2));
+    const h=50*P[w.id]; w.bar.setAttribute('height',h.toFixed(1)); w.bar.setAttribute('y',(703-h).toFixed(1));
+  }
+  const run=pumpOn();
+  motor.classList.toggle('run',run); PUMPS.forEach(p=>p.classList.toggle('run',run));
+}
+
+/* ---------- Seitenleiste ---------- */
+const TXT={
+  ruhe:()=>['Ruhe – Bremspedal nicht betätigt',`Kein Bremsdruck im System. Alle Magnetventile sind <b>stromlos</b>: Einlassventile (Y4.9–Y4.12) <b>offen</b>, Auslassventile (Y4.19–Y4.22) <b>geschlossen</b>. Rückförderpumpe aus.<br>Wird das Pedal losgelassen, fließt die Flüssigkeit über Einlassventile und Rückschlagventile zum Hauptbremszylinder zurück.`],
+  normal:()=>['Fahrzeug bremst (normale Bremsung)',`Der Fahrer tritt das Pedal. Der Tandem-Hauptbremszylinder <b>J17.29</b> baut in <b>beiden Kreisen</b> Druck auf. Die Bremsflüssigkeit fließt durch die <b>stromlos offenen Einlassventile</b> zu allen vier Radbremszylindern.<br>Auslassventile zu, Pumpe aus – ABS greift nicht ein.<br><b>→ Das entspricht der Lösung von Aufgabe a).</b>`],
+  halten:(w)=>[`ABS-Phase 1: Druck halten (${w.id})`,`Das Steuergerät erkennt: Rad <b>${w.id}</b> verzögert zu stark (Blockierneigung). Es <b>bestromt das Einlassventil ${w.ev}</b> → es schließt. Auslassventil ${w.av} bleibt zu.<br>Der Druck im Radbremszylinder bleibt <b>konstant</b> – auch wenn der Fahrer stärker tritt.`],
+  abbau:(w)=>[`ABS-Phase 2: Druck abbauen (${w.id})`,`Das Rad blockiert trotzdem weiter. Einlassventil <b>${w.ev} bleibt zu</b>, Auslassventil <b>${w.av} wird bestromt → offen</b>.<br>Bremsflüssigkeit fließt aus der Radbremse in die <b>Dämpferkammer/Speicherkammer (4)</b>. Die <b>Rückförderpumpe (3)</b>, angetrieben von <b>M9</b>, fördert sie über die Dämpferkammer zurück in den Bremskreis zum Hauptbremszylinder → <b>Pedal pulsiert</b>.`],
+  aufbau:(w)=>[`ABS-Phase 3: Druck aufbauen (${w.id})`,`Das Rad dreht wieder an. Beide Ventile werden <b>stromlos</b>: Einlassventil ${w.ev} offen, Auslassventil ${w.av} zu. Der Druck steigt wieder (in der Praxis stufenweise durch Takten des Einlassventils). Die Pumpe leert noch den Speicher.`],
+  multi:()=>{
+    const names={voll:'Vollbremsung auf trockener Straße',musplit:'µ-Split: links Eis, rechts Asphalt',kurve:'Bremsen in der Rechtskurve',eigen:'Eigene Auswahl'};
+    const info={
+      voll:'Alle Räder neigen zum Blockieren. <b>Jedes Rad wird einzeln geregelt</b> und hat einen eigenen Takt – darum schalten die Ventile nicht gleichzeitig.',
+      musplit:'Die <b>linken Räder</b> stehen auf Eis und blockieren sofort → nur dort wird geregelt (wenig Druck). <b>Vorne rechts</b> bremst mit vollem Druck. Dadurch dreht das Auto leicht ein – der Fahrer muss gegenlenken.',
+      kurve:'In der Rechtskurve drückt die Fliehkraft das Auto nach außen: Die <b>kurveninneren (rechten) Räder</b> werden entlastet und blockieren zuerst → dort wird geregelt. Die kurvenäußeren Räder können noch voll bremsen.',
+      eigen:'Wähle mit den Häkchen selbst, welche Räder zum Blockieren neigen.'
+    };
+    const rs=REAR.filter(i=>multi[i]);
+    const sl=selectLow&&rs.length?`<br><b>Select-Low Hinterachse:</b> beide Hinterräder werden <b>gemeinsam</b> nach dem schlechteren Rad (${leader(byId(REAR[0]))}) geregelt → das Heck bleibt stabil, auch wenn ein Hinterrad noch Haftung hätte.`:'';
+    const reg=WHEELS.filter(absSel).map(w=>w.id+' ('+w.pos+')').join(', ')||'keins';
+    return ['ABS an mehreren Rädern – '+names[scen],info[scen]+sl+`<br><br>Geregelt: <b>${reg}</b><br>Die Rückförderpumpe läuft, solange geregelt wird. Pro Bremskreis gibt es eine Pumpe – beide werden von M9 angetrieben.`];
+  },
+  auto:(w)=>[`ABS-Regelzyklus (${w.id})`,`Automatischer Ablauf: <b>Druck aufbauen → halten → abbauen → halten → …</b><br>Aktuelle Phase: <b>${({build:'Druck aufbauen',hold:'Druck halten',release:'Druck abbauen'})[autoPh()]}</b><br>In Wirklichkeit 4–10 Regelzyklen pro Sekunde – hier stark verlangsamt.`]
+};
+const vt=document.getElementById('vt'), statT=document.getElementById('statTitle'), stat=document.getElementById('stat'), pumpS=document.getElementById('pumpState');
+let lastKey='';
+function updPanel(force){
+  const w=byId(sel);
+  const key=mode+sel+(mode==='auto'?autoPh():'')+(mode==='multi'?scen+selectLow+Object.keys(multi).join():'');
+  if(force||key!==lastKey){const [t,d]=TXT[mode](w);statT.textContent=t;stat.innerHTML=d;lastKey=key;}
+  vt.innerHTML=WHEELS.map(x=>{
+    const ec=evClosed(x), ao=avOpen(x);
+    const c=x.circ===1?'var(--c1)':'var(--c2)';
+    return `<tr><td><span class="dot" style="background:${c}"></span>${x.id} <span style="color:#6b7280">${x.pos.replace('vorne ','V').replace('hinten ','H').replace('links','L').replace('rechts','R')}</span></td>
+      <td class="${ec?'z':'o'}">${x.ev} ${ec?'zu':'offen'}</td>
+      <td class="${ao?'o':'z'}">${x.av} ${ao?'offen':'zu'}</td>
+      <td>${Math.round(P[x.id]*100)} bar</td></tr>`;}).join('');
+  pumpS.textContent=pumpOn()?'läuft':'aus';
+}
+
+/* Diagramm */
+const chart=document.getElementById('chart'); const hist=[];
+(function(){
+  for(const [v,l] of [[0,'0'],[50,'50'],[100,'100 bar']]){
+    const y=97-v*0.85;
+    el('line',{x1:30,y1:y,x2:318,y2:y,stroke:'#e5e7eb'},chart);
+    const t=el('text',{x:2,y:y+4,style:'font:10px system-ui;fill:#6b7280'},chart);t.textContent=l;
+  }
+})();
+const HIST={}, POLY={};
+WHEELS.forEach((w,i)=>{HIST[w.id]=[];POLY[w.id]=el('polyline',{fill:'none','stroke-width':2,'stroke-linejoin':'round',stroke:['#16a34a','#65a30d','#2563eb','#7c3aed'][i]},chart);});
+(function(){const L=el('g',{},chart);WHEELS.forEach((w,i)=>{const x=40+i*70;el('rect',{x,y:103,width:10,height:3,fill:POLY[w.id].getAttribute('stroke')},L);const t=el('text',{x:x+13,y:107,style:'font:9px system-ui;fill:#6b7280'},L);t.textContent=w.id;});})();
+function updChart(){
+  for(const w of WHEELS){const h=HIST[w.id];h.push(P[w.id]);if(h.length>144)h.shift();
+    const show=mode==='multi'||w.id===sel;
+    POLY[w.id].style.display=show?'':'none';
+    POLY[w.id].setAttribute('stroke-width',mode!=='multi'?2.4:1.8);
+    POLY[w.id].setAttribute('points',h.map((v,i)=>`${30+i*2},${(97-v*85).toFixed(1)}`).join(' '));}
+}
+
+/* Steuerung */
+document.querySelectorAll('button.m[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+document.getElementById('selWheel').addEventListener('change',e=>setSel(e.target.value));
+document.getElementById('scen').addEventListener('change',e=>{scen=e.target.value;applyScen();updWheelSel();updPanel(true);});
+document.getElementById('slow').addEventListener('change',e=>{selectLow=e.target.checked;updWheelSel();updPanel(true);});
+document.getElementById('speed').addEventListener('change',e=>speed=parseFloat(e.target.value));
+document.getElementById('pause').addEventListener('click',e=>{paused=!paused;e.target.textContent=paused?'▶ Weiter':'❚❚ Pause';svg.classList.toggle('paused',paused);document.querySelectorAll('.rotor').forEach(r=>r.style.animationPlayState=paused?'paused':'');});
+
+/* Tooltip */
+const tip=document.getElementById('tip');
+function showTip(e){const t=e.target.closest('[data-tip]');if(!t){tip.style.opacity=0;return;}
+  tip.innerHTML=t.dataset.tip;tip.style.opacity=1;
+  const x=Math.min(e.clientX+14,window.innerWidth-285), y=Math.min(e.clientY+14,window.innerHeight-tip.offsetHeight-8);
+  tip.style.left=x+'px';tip.style.top=y+'px';}
+svg.addEventListener('mousemove',showTip);
+svg.addEventListener('mouseleave',()=>tip.style.opacity=0);
+svg.addEventListener('touchstart',e=>{const t=e.touches[0];showTip({target:document.elementFromPoint(t.clientX,t.clientY),clientX:t.clientX,clientY:t.clientY});},{passive:true});
+
+/* Loop */
+let last=performance.now(), acc=0, accC=0;
+function loop(now){
+  let dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(!paused){ step(dt*speed); render(); acc+=dt; accC+=dt;
+    if(acc>0.1){acc=0;updPanel(false);}
+    if(accC>0.07){accC=0;updChart();}
+  }
+  requestAnimationFrame(loop);
+}
+(function(){const h=decodeURIComponent(location.hash.slice(1)).split('-');const m=h[0];
+  if(h[1]&&byId(h[1]))setSel(h[1]);
+  setMode(['ruhe','normal','halten','abbau','aufbau','auto','multi'].includes(m)?m:'ruhe');})();
+render(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

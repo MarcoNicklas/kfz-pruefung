@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESP – Simulation</title>
+<script src="../inhalte.js"></script><script src="../zugang.js"></script><script>if(window.KFZ_ZUGANG&&!KFZ_ZUGANG.darf("bremse"))location.replace("../index.html#gesperrt");</script>
+<style>
+:root{
+  --red:#b91c1c; --lred:#fca5a5; --yel:#eab308;
+  --ink:#1f2937; --mut:#6b7280; --pipe:#b9c0ca; --bg:#f3f5f8; --card:#fff; --line:#e3e7ec;
+  --hot:#f59e0b; --pri:#1f4e78;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+header{background:var(--pri);color:#fff}
+header .in{max-width:1320px;margin:auto;padding:16px 16px 0}
+h1{font-size:1.3rem;margin:0 0 2px}
+.sub{opacity:.85;font-size:.9rem;margin:0 0 10px}
+nav.tabs{display:flex;flex-wrap:wrap;gap:4px}
+nav.tabs button{font:inherit;font-size:.92rem;border:0;background:rgba(255,255,255,.14);color:#fff;padding:9px 14px;border-radius:8px 8px 0 0;cursor:pointer}
+nav.tabs button.on{background:var(--bg);color:var(--ink);font-weight:600}
+.tab{display:none}.tab.on{display:block}
+.wrap{max-width:1320px;margin:auto;padding:14px 16px 32px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px}
+@media(max-width:1000px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+button.m{font:inherit;font-size:.88rem;padding:7px 12px;border-radius:8px;border:1.5px solid #c9d0d9;background:#fff;color:var(--ink);cursor:pointer}
+button.m:hover{border-color:#8b95a3}
+button.m.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.m.esp.on{background:#7c2d12;border-color:#7c2d12}
+.opts{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:.9rem;color:var(--mut);margin-bottom:6px}
+.opts label{display:inline-flex;gap:5px;align-items:center}
+select,input[type=range]{font:inherit;font-size:.9rem}
+select{padding:4px 6px;border-radius:6px;border:1px solid #c9d0d9}
+svg.plan{width:100%;height:auto;display:block;user-select:none}
+.hint{font-size:.84rem;color:var(--mut);margin:8px 2px 0}
+h2{font-size:1.05rem;margin:0 0 6px}
+h3{font-size:.95rem;margin:14px 0 6px}
+.stat{font-size:.92rem}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+th,td{text-align:left;padding:4px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:600}
+td.z{color:#b91c1c;font-weight:600} td.o{color:#15803d;font-weight:600}
+.leg{display:grid;grid-template-columns:34px 1fr;gap:6px 8px;font-size:.84rem;align-items:center}
+.sw{height:8px;border-radius:4px}
+.box{border-radius:8px;padding:8px 10px;font-size:.86rem;margin-top:10px;background:#f0f6ff;border:1px solid #cfe0fb}
+.box.warn{background:#fef2f2;border-color:#fecaca}
+.box.ok{background:#f0fdf4;border-color:#bbf7d0}
+.box.or{background:#fff7ed;border-color:#fed7aa}
+/* Leitungen */
+.pb{fill:none;stroke:var(--pipe);stroke-width:4;stroke-linejoin:round;stroke-linecap:round}
+.pf{fill:none;stroke:var(--red);stroke-width:7;stroke-linejoin:round;stroke-linecap:round;opacity:0;transition:opacity .25s}
+.pl{fill:none;stroke:#fff;stroke-width:2.4;stroke-dasharray:7 11;stroke-linecap:round;opacity:0}
+.seg[data-s="P"] .pf,.seg[data-s="Pf"] .pf,.seg[data-s="Pr"] .pf{opacity:1}
+.seg[data-s="S"] .pf{opacity:1;stroke:var(--yel)}
+.seg[data-s="L"] .pf,.seg[data-s="Lf"] .pf{opacity:1;stroke:var(--lred);stroke-width:6}
+.seg[data-s="Pf"] .pl,.seg[data-s="S"] .pl{opacity:.95;animation:fwd .7s linear infinite}
+.seg[data-s="Pr"] .pl{opacity:.95;animation:rev .7s linear infinite}
+.seg[data-s="Lf"] .pl{opacity:1;stroke:var(--red);animation:fwd .9s linear infinite}
+.seg[data-s="S"] .pl{stroke:#78350f}
+@keyframes fwd{to{stroke-dashoffset:-36}}
+@keyframes rev{to{stroke-dashoffset:36}}
+/* Bauteile */
+.ink{fill:none;stroke:var(--ink);stroke-width:1.8}
+.inkf{fill:#fff;stroke:var(--ink);stroke-width:1.8}
+.vbox{fill:#fff;stroke:var(--ink);stroke-width:1.8}
+.vsym{fill:none;stroke:var(--ink);stroke-width:2}
+.vsymf{fill:var(--ink)}
+.thin{stroke-width:1.2}
+.coil{fill:#fff;stroke:var(--ink);stroke-width:1.8;transition:fill .15s}
+.coil.en{fill:var(--hot)}
+.spring{fill:none;stroke:var(--ink);stroke-width:1.5}
+.lbl{font:700 15px system-ui,sans-serif;fill:var(--ink)}
+.lbl-s{font:600 12px system-ui,sans-serif;fill:var(--mut)}
+.lbl-b{font:800 17px system-ui,sans-serif;fill:var(--ink)}
+.badge{opacity:0;transition:opacity .2s;pointer-events:none}
+.showbadges .badge{opacity:1}
+.badge circle{fill:#fff;stroke:#dc2626;stroke-width:2}
+.badge text{font:700 14px system-ui,sans-serif;fill:#dc2626;text-anchor:middle}
+.rotor{transform-box:fill-box;transform-origin:center}
+.run .rotor{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+[data-tip]{cursor:help}
+#pedal{transform-box:view-box;transform-origin:905px 20px;transition:transform .35s}
+#pedal.pressed{transform:rotate(-14deg)}
+/* Elektrik */
+.w{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.wc{fill:none;stroke:#fff;stroke-width:1.6;stroke-dasharray:4 9;opacity:0}
+.wc.on{opacity:.95;animation:fwd 1s linear infinite}
+.dmm{background:#1f2937;border-radius:12px;padding:12px;color:#e5e7eb}
+.lcd{background:#c7d2b8;color:#111;font:700 34px "Courier New",monospace;text-align:right;padding:6px 12px;border-radius:6px;letter-spacing:1px;min-height:52px}
+.lcd small{font-size:14px}
+.dmm label{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:.86rem}
+.dmm select{width:60%}
+.probe-r{fill:#dc2626;stroke:#fff;stroke-width:2}
+.probe-b{fill:#111;stroke:#fff;stroke-width:2}
+/* Entlüften */
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{padding:7px 10px 7px 38px;border:1px solid var(--line);border-radius:8px;margin:5px 0;position:relative;font-size:.9rem;background:#fff}
+.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:10px;top:7px;width:20px;height:20px;border-radius:50%;background:#e5e7eb;text-align:center;font-weight:700;font-size:.8rem;line-height:20px}
+.steps li.cur{border-color:var(--pri);background:#eef4fb}
+.steps li.done::before{background:#16a34a;color:#fff;content:"✓"}
+.order button{display:block;width:100%;text-align:left;margin:4px 0}
+#tip{position:fixed;pointer-events:none;background:#111827;color:#fff;font-size:.82rem;line-height:1.35;padding:7px 9px;border-radius:7px;max-width:280px;z-index:10;opacity:0;transition:opacity .12s}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <a href="../pruefungen/esp-diagnose-winter-2020.html" style="font-size:.88rem;color:#fff;opacity:.85;text-decoration:none">← zur Prüfung ESP – Diagnosetechnik 2</a>
+  <h1>ESP – Hydraulik, Magnetventile, Spannungsversorgung, Drucksensor, Entlüften</h1>
+  <p class="sub">Interaktive Simulation zur Prüfung „ESP – Diagnosetechnik 2“ (Winter 2020) · Werkstattauftrag: „Bei hoher Geschwindigkeit findet keine ESP-Regelung statt.“</p>
+  <nav class="tabs">
+    <button data-tab="hyd" class="on">1 · Hydraulik &amp; Magnetventile</button>
+    <button data-tab="ele">2 · Spannungsversorgung &amp; Z-Diode</button>
+    <button data-tab="ps">3 · Drucksensor</button>
+    <button data-tab="ent">4 · Entlüften &amp; Abschluss</button>
+  </nav>
+</div></header>
+
+<!-- ================= TAB 1 HYDRAULIK ================= -->
+<section class="tab on" id="tab-hyd"><div class="wrap">
+  <div class="card">
+    <div class="controls">
+      <button class="m" data-hm="ruhe">Ruhe</button>
+      <button class="m" data-hm="normal">Fahrer bremst</button>
+      <button class="m esp" data-hm="abs">ABS: Druckabbau</button>
+      <button class="m esp" data-hm="esp">ESP: aktiver Bremseingriff ▶</button>
+    </div>
+    <div class="opts">
+      <label>Rad: <select id="hWheel"><option value="HL" selected>HL (hinten links)</option><option value="VR">VR (vorne rechts)</option></select></label>
+      <label><input type="checkbox" id="fHSV"> Fehler 058C: HSV ohne Spannung</label>
+      <label><input type="checkbox" id="nums"> Nummern aus Aufgabe 4</label>
+    </div>
+    <svg class="plan" id="hsvg" viewBox="0 0 960 730"></svg>
+    <p class="hint">Gelb = Saugleitung · rot = Bremsdruck · hellrot = Rücklauf/Niederdruck · weiße Striche = Fließrichtung · orange Spule = Ventil bestromt. Dargestellt ist ein Bremskreis (Kreis 2: HL und VR) wie in Bild 3.</p>
+  </div>
+  <aside class="card">
+    <h2 id="hTitle">Ruhe</h2>
+    <div class="stat" id="hText"></div>
+    <h3>Ventilstellungen</h3>
+    <table><thead><tr><th>Ventil</th><th>stromlos</th><th>jetzt</th></tr></thead><tbody id="hTab"></tbody></table>
+    <div style="font-size:.84rem;margin-top:6px">Rückförderpumpe PE: <b id="hPump">aus</b> · Drucksensor B2.30: <b id="hPU">1,50 V</b></div>
+    <h3>Legende</h3>
+    <div class="leg">
+      <div class="sw" style="background:var(--yel)"></div><div>Saugleitung (Pumpe saugt über HSV an)</div>
+      <div class="sw" style="background:var(--red)"></div><div>Bremsdruck</div>
+      <div class="sw" style="background:var(--lred)"></div><div>Rücklauf / Niederdruck (Speicher AC)</div>
+      <div class="sw" style="background:var(--pipe)"></div><div>drucklos</div>
+      <div class="sw" style="background:var(--hot)"></div><div>Magnetspule bestromt</div>
+    </div>
+    <div class="box or"><b>Aufgabe 7c) – ESP bremst HL</b><br>HSV <b>offen</b>, USV <b>zu</b>, EV HL <b>offen</b>, AV HL <b>zu</b>, EV VR <b>zu</b>. → Modus „ESP: aktiver Bremseingriff“, Rad HL.</div>
+    <div class="box"><b>Aufgabe 6) – Wozu das HSV?</b><br>Das HSV öffnet, damit die Pumpe Bremsflüssigkeit vom Hauptbremszylinder <b>ansaugen</b> kann – bei ASR/ESP, wenn ein Rad <b>ohne Fahrerbremsung</b> gebremst werden muss. Ohne Spannung am HSV (058C) → <b>keine ESP-Regelung</b>.</div>
+  </aside>
+</div></section>
+
+<!-- ================= TAB 2 ELEKTRIK ================= -->
+<section class="tab" id="tab-ele"><div class="wrap">
+  <div class="card">
+    <div class="opts" style="color:var(--ink)">
+      <label><input type="checkbox" id="eZ" checked> Zündung ein (Kl. 15)</label>
+      <label><input type="checkbox" id="eVR"> SG schaltet PIN 27 (Ventilrelais)</label>
+      <label><input type="checkbox" id="eMot"> SG schaltet PIN 28 (Motorrelais)</label>
+    </div>
+    <div class="opts" style="color:var(--ink)" id="eValves"></div>
+    <div class="opts" style="color:var(--ink)">
+      <label>Bordnetzspannung: <input type="range" id="eU" min="11" max="24" step="0.1" value="12.6"> <b id="eUv">12,6 V</b></label>
+      <label>Fehler: <select id="eF"><option value="none">kein Fehler</option><option value="plus">Übergangswiderstand Plus-Zuleitung</option><option value="masse">Übergangswiderstand Masse</option></select></label>
+      <button class="m" id="eFuse">Sicherung ersetzen</button>
+    </div>
+    <svg class="plan" id="esvg" viewBox="0 0 1000 600"></svg>
+    <p class="hint">Rot = Plus (≥ 9 V) · orange = abgesenkte Spannung · grau = spannungslos · blau = Masse · weiße Striche = Stromfluss. Vereinfachter Ausschnitt nach Bild 8.</p>
+  </div>
+  <aside class="card">
+    <h2>Multimeter</h2>
+    <div class="dmm">
+      <div class="lcd" id="lcd">0.00</div>
+      <label>Drehschalter <select id="mR"><option value="V20" selected>V⎓ 20</option><option value="V200">V⎓ 200</option><option value="VAC">V~ 200</option><option value="OHM">Ω 200</option><option value="A10">A⎓ 10 A</option></select></label>
+      <label><span style="color:#fca5a5">rote Messleitung (V)</span> <select id="mP"></select></label>
+      <label><span>schwarze Messleitung (COM)</span> <select id="mN"></select></label>
+    </div>
+    <div class="box" id="eMsg"></div>
+    <h3>Zustand</h3>
+    <div class="stat" id="eState"></div>
+    <div class="box or"><b>Aufgabe 8c) – Warum unter Last?</b><br>Unter Last fließen höhere Ströme. Erst dann verursachen Übergangswiderstände (korrodierte Stecker, beschädigte Leitungen) einen <b>messbaren Spannungsabfall</b>. Probiere: Fehler einstellen, PIN 1 gegen PIN 10 messen, dann Motor und Ventile einschalten.</div>
+    <div class="box"><b>Aufgabe 9) – Z-Diode</b><br>Überspannungsschutz: Überschreitet die Spannung die Z-Spannung, wird die Z-Diode in Sperrrichtung leitend, der Strom fließt zur Masse und die Sicherung im Schutzrelais spricht an. → Bordnetzspannung über 18 V schieben.</div>
+  </aside>
+</div></section>
+
+<!-- ================= TAB 3 DRUCKSENSOR ================= -->
+<section class="tab" id="tab-ps"><div class="wrap">
+  <div class="card">
+    <div class="opts" style="color:var(--ink)">
+      <label>Bremspedal: <input type="range" id="pPed" min="0" max="100" value="0" style="width:200px"> <b id="pPedv">0 %</b></label>
+      <button class="m" id="pRamp">Langsam bis Anschlag bremsen ▶</button>
+      <button class="m" id="pRel">Pedal los</button>
+      <button class="m" id="p30">p = 30 bar (Aufgabe 15)</button>
+    </div>
+    <div class="opts" style="color:var(--ink)">
+      <label><input type="checkbox" id="pZ" checked> Zündung ein</label>
+      <label>Fehler: <select id="pF"><option value="none">kein Fehler</option><option value="sig">Signalleitung Kl. 4 → PIN 8 unterbrochen</option><option value="masse">Masse Kl. 2 → PIN 21 unterbrochen</option><option value="stuck">Sensor defekt (Signal ändert sich nicht)</option></select></label>
+    </div>
+    <svg class="plan" id="psvg" viewBox="0 0 1000 420"></svg>
+    <h3>Spannungsverlauf am Signal (PIN 8 gegen PIN 21)</h3>
+    <svg class="plan" id="pchart" viewBox="0 0 1000 230" style="background:#fafbfc;border:1px solid var(--line);border-radius:8px"></svg>
+  </div>
+  <aside class="card">
+    <h2>Messung am Steuergerät A2.15</h2>
+    <div class="dmm">
+      <div class="lcd" id="pLcd">0.00</div>
+      <label><span style="color:#fca5a5">rot (V)</span> <select id="pmP"><option value="8" selected>PIN 8 (Kl. 4 Signal)</option><option value="20">PIN 20 (Kl. 3 +5 V)</option><option value="21">PIN 21 (Kl. 2 Masse)</option><option value="m">Fahrzeugmasse</option></select></label>
+      <label><span>schwarz (COM)</span> <select id="pmN"><option value="8">PIN 8 (Kl. 4 Signal)</option><option value="20">PIN 20 (Kl. 3 +5 V)</option><option value="21" selected>PIN 21 (Kl. 2 Masse)</option><option value="m">Fahrzeugmasse</option></select></label>
+    </div>
+    <div class="box" id="pMsg"></div>
+    <h3>Kraft auf die Membrane</h3>
+    <div class="stat" id="pForce"></div>
+    <div class="box or"><b>Sollwerte (Anlage 2)</b><br>Versorgung Kl. 3 gegen Masse: <b>4,5 … 5,2 V</b><br>Signal Kl. 4 gegen Kl. 2: <b>1,5 … 4,0 V</b> – abhängig vom Bremspedal.<br>Einbauort: im <b>Hydroaggregat</b> des ESP.</div>
+  </aside>
+</div></section>
+
+<!-- ================= TAB 4 ENTLÜFTEN ================= -->
+<section class="tab" id="tab-ent"><div class="wrap">
+  <div class="card">
+    <svg class="plan" id="bsvg" viewBox="0 0 1000 470"></svg>
+    <div class="controls" style="margin-top:10px">
+      <button class="m" id="bPrev">◀ Zurück</button>
+      <button class="m on" id="bNext">Weiter ▶</button>
+      <span id="bInfo" style="font-size:.9rem;color:var(--mut)"></span>
+    </div>
+    <ol class="steps" id="bSteps"></ol>
+  </div>
+  <aside class="card">
+    <h2>Abschlussarbeiten in der richtigen Reihenfolge (Aufgabe 14)</h2>
+    <p style="font-size:.88rem;margin:0 0 6px">Klicke die Arbeiten in der Reihenfolge an, in der du sie durchführst.</p>
+    <div class="order" id="oList"></div>
+    <div class="box" id="oMsg">Noch keine Auswahl.</div>
+    <button class="m" id="oReset" style="margin-top:8px">Neu starten</button>
+    <div class="box or"><b>Anlage 1 – Entlüften</b><br>Spülmenge pro Rad: <b>ca. 0,5 l</b>, Flüssigkeit muss <b>blasenfrei</b> austreten. Nur die vom Hersteller freigegebene Bremsflüssigkeit verwenden – falsche Flüssigkeit kann zum Totalausfall führen.</div>
+  </aside>
+</div></section>
+
+<div id="tip"></div>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent.appendChild(e);return e;}
+function txt(parent,x,y,t,cls,extra){const e=el('text',Object.assign({x,y,class:cls||'lbl'},extra||{}),parent);e.textContent=t;return e;}
+const fmt=(v,d)=>v.toFixed(d).replace('.',',');
+
+/* Tabs */
+document.querySelectorAll('nav.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+b.dataset.tab));
+}));
+
+/* ======================================================================
+   TAB 1 – HYDRAULIK (ein Bremskreis wie Bild 3)
+   ====================================================================== */
+const H=document.getElementById('hsvg');
+const hPipes=el('g',{},H), hComp=el('g',{},H), hBadge=el('g',{},H);
+const HP={
+  mc:'M790,80V100H600', mcH:'M600,100H280V135', pu:'M790,100V200H845',
+  usvIn:'M600,100V135', usvBy:'M600,112H720V235H600', usvOut:'M600,165V220',
+  hsvOut:'M280,165V212A8,8 0 0 1 280,228V330H365',
+  nodeR:'M600,220H365', nodeL:'M365,220H125', pumpOut:'M365,261V220',
+  pIn2:'M365,330V309', pIn1:'M365,435V330', ac:'M465,435V414',
+  HL_evIn:'M125,220V285', HL_evOut:'M125,315V590', HL_wh:'M125,590V652', HL_avIn:'M125,590H255V555', HL_avOut:'M255,525V435H365', HL_by:'M125,240H35V360H125',
+  VR_evIn:'M600,220V285', VR_evOut:'M600,315V590', VR_wh:'M600,590V652', VR_avIn:'M600,590H465V555', VR_avOut:'M465,525V435H365', VR_by:'M600,240H510V360H600'
+};
+const HSEG={};
+for(const k in HP){const g=el('g',{class:'seg','data-s':'0'},hPipes);for(const c of ['pb','pf','pl'])el('path',{d:HP[k],class:c},g);HSEG[k]=g;}
+
+const BW=26;
+function setShift(v,s){
+  v.shift=s; v.sl.setAttribute('transform',`translate(${s.toFixed(2)},0)`);
+  let a,e; if(v.coil==='R'){a=-44;e=-BW/2+s;} else {a=BW*1.5+30;e=BW*1.5+s;}
+  const n=6,p=[];for(let i=0;i<=n;i++)p.push(`${(a+(e-a)*i/n).toFixed(1)},${i===0||i===n?0:(i%2?-6:6)}`);
+  v.spring.setAttribute('points',p.join(' '));
+}
+/* 2/2-Wegeventil: linkes Feld liegt an den Anschlüssen (Ruhestellung), bestromt schiebt sich das rechte Feld darunter */
+function valve(parent,X,y,o){
+  const g=el('g',{transform:`translate(${X},${y})`,'data-tip':o.tip},parent);
+  el('rect',{x:-60,y:-18,width:130,height:36,fill:'transparent'},g);
+  const spring=el('polyline',{class:'spring'},g);
+  const sl=el('g',{},g);
+  el('rect',{x:-BW/2,y:-15,width:BW,height:30,class:'vbox'},sl);
+  el('rect',{x:BW/2,y:-15,width:BW,height:30,class:'vbox'},sl);
+  const open=cx=>{el('line',{x1:cx,y1:-12,x2:cx,y2:12,class:'vsym'},sl);el('path',{d:`M${cx-4},-5L${cx},-13L${cx+4},-5ZM${cx-4},5L${cx},13L${cx+4},5Z`,class:'vsymf'},sl);};
+  const shut=cx=>el('path',{d:`M${cx},-15V-6M${cx-6},-6H${cx+6}M${cx},15V6M${cx-6},6H${cx+6}`,class:'vsym'},sl);
+  if(o.rest==='open'){open(0);shut(BW);}else{shut(0);open(BW);}
+  const cx=o.coil==='R'?BW*1.5:-BW/2-12;
+  const coil=el('rect',{x:cx,y:-10,width:12,height:20,class:'coil'},sl);
+  el('path',{d:`M${cx},10L${cx+12},-10`,class:'vsym thin'},sl);
+  const v={coil:o.coil,coilEl:coil,sl,spring,shift:0,rest:o.rest,name:o.name};
+  setShift(v,0); return v;
+}
+function check(parent,X,y,up,tip){
+  const g=el('g',{transform:`translate(${X},${y})`,'data-tip':tip},parent);
+  el('rect',{x:-11,y:-13,width:22,height:26,fill:'transparent'},g);
+  if(up){el('path',{d:'M-8,-1L0,10L8,-1',class:'vsym'},g);el('circle',{cx:0,cy:-3,r:5.5,class:'inkf'},g);}
+  else {el('path',{d:'M-8,1L0,-10L8,1',class:'vsym'},g);el('circle',{cx:0,cy:3,r:5.5,class:'inkf'},g);}
+}
+function badge(x,y,n){const g=el('g',{class:'badge'},hBadge);el('circle',{cx:x,cy:y,r:13},g);txt(g,x,y+5,n,'',{});}
+
+/* Hauptbremszylinder, BKV, Pedal, Drucksensor */
+(function(){
+  const g=el('g',{'data-tip':'<b>Tandem-Hauptbremszylinder</b> mit Ausgleichsbehälter. Kreis 2 versorgt hier HL und VR (Diagonalaufteilung).'},hComp);
+  el('rect',{x:765,y:14,width:60,height:16,rx:3,class:'inkf'},g);
+  el('rect',{x:755,y:32,width:85,height:48,rx:4,class:'inkf'},g);
+  el('line',{x1:800,y1:32,x2:800,y2:80,class:'ink'},g);
+  const b=el('g',{'data-tip':'<b>Bremskraftverstärker</b>'},hComp);
+  el('ellipse',{cx:862,cy:56,rx:16,ry:36,class:'inkf'},b);
+  const p=el('g',{id:'pedal','data-tip':'<b>Bremspedal</b>'},hComp);
+  el('line',{x1:878,y1:56,x2:905,y2:56,stroke:'#1f2937','stroke-width':3},p);
+  el('line',{x1:905,y1:20,x2:925,y2:120,stroke:'#1f2937','stroke-width':5,'stroke-linecap':'round'},p);
+  el('rect',{x:912,y:118,width:30,height:7,rx:2,fill:'#1f2937'},p);
+  txt(hComp,740,96,'Kreis 2','lbl','');hComp.lastChild.setAttribute('text-anchor','end');
+  el('path',{d:'M815,80V130H845',class:'pb'},hPipes);
+  txt(hComp,850,135,'Kreis 1','lbl-s');
+  const s=el('g',{'data-tip':'<b>B2.30 Drucksensor p/U</b> (Tandem-Hauptbremszylinder)<br>meldet dem Steuergerät, wie stark der Fahrer bremst. Sitzt im Hydroaggregat.'},hComp);
+  el('rect',{x:845,y:180,width:48,height:40,class:'inkf'},s);
+  el('line',{x1:845,y1:220,x2:893,y2:180,class:'ink'},s);
+  txt(s,852,197,'P','lbl');txt(s,874,215,'U','lbl');
+})();
+/* Ventile */
+const HV={};
+HV.HSV=valve(hComp,280,150,{name:'HSV',coil:'L',rest:'closed',tip:'<b>HSV Hochdruckschaltventil</b> (Ansaugventil)<br>2/2-Wegeventil, <b>stromlos geschlossen</b>. Bestromt → offen: Die Pumpe kann Bremsflüssigkeit vom Hauptbremszylinder ansaugen (ESP/ASR).'});
+HV.USV=valve(hComp,600,150,{name:'USV',coil:'L',rest:'open',tip:'<b>USV Umschaltventil</b><br>2/2-Wegeventil, <b>stromlos offen</b>. Bestromt → zu: Der Pumpendruck kann nicht zum Hauptbremszylinder zurück (aktiver Druckaufbau). Mit Rückschlagventil und Druckbegrenzung.'});
+HV.EV_HL=valve(hComp,125,300,{name:'EV HL',coil:'R',rest:'open',tip:'<b>EV HL Einlassventil hinten links</b><br><b>stromlos offen</b>. Bestromt → zu: Druck halten / Rad nicht bremsen.'});
+HV.EV_VR=valve(hComp,600,300,{name:'EV VR',coil:'R',rest:'open',tip:'<b>EV VR Einlassventil vorne rechts</b><br><b>stromlos offen</b>. Bestromt → zu.'});
+HV.AV_HL=valve(hComp,255,540,{name:'AV HL',coil:'R',rest:'closed',tip:'<b>AV HL Auslassventil hinten links</b><br><b>stromlos geschlossen</b>. Bestromt → offen: Druckabbau zum Speicher AC.'});
+HV.AV_VR=valve(hComp,465,540,{name:'AV VR',coil:'R',rest:'closed',tip:'<b>AV VR Auslassventil vorne rechts</b><br><b>stromlos geschlossen</b>. Bestromt → offen: Druckabbau.'});
+txt(hComp,214,156,'HSV','lbl',{'text-anchor':'end'});
+txt(hComp,534,156,'USV','lbl',{'text-anchor':'end'});
+txt(hComp,182,344,'EV HL','lbl');txt(hComp,657,344,'EV VR','lbl');
+txt(hComp,312,580,'AV HL','lbl');txt(hComp,522,580,'AV VR','lbl');
+check(hComp,720,172,false,'<b>Rückschlagventil am USV</b><br>Der Fahrer kann auch bei geschlossenem USV Bremsdruck aufbauen.');
+check(hComp,35,300,true,'<b>Rückschlagventil am EV</b><br>Beim Lösen der Bremse fließt die Flüssigkeit schnell zurück.');
+check(hComp,510,300,true,'<b>Rückschlagventil am EV</b><br>Beim Lösen der Bremse fließt die Flüssigkeit schnell zurück.');
+/* Federbelastetes Rückschlagventil vor der Pumpe */
+(function(){const g=el('g',{'data-tip':'<b>Rückschlagventil (federbelastet)</b><br>trennt die Saugseite vom Speicher AC.'},hComp);
+  el('polyline',{points:'365,352 359,356 371,360 359,364 371,368 365,372',class:'spring'},g);
+  el('path',{d:'M357,376L365,386L373,376',class:'vsym'},g);el('circle',{cx:365,cy:380,r:5,class:'inkf'},g);})();
+/* Pumpe + Motor */
+const hPumpG=el('g',{'data-tip':'<b>PE Hochdruck-/Rückförderpumpe</b><br>ABS: fördert Flüssigkeit aus dem Speicher zurück. ESP/ASR: erzeugt selbst Bremsdruck, ohne dass der Fahrer bremst.'},hComp);
+el('circle',{cx:365,cy:285,r:24,class:'inkf'},hPumpG);
+const hr=el('g',{class:'rotor'},hPumpG);el('path',{d:'M351,285H379M365,271V299',stroke:'#cbd5e1','stroke-width':3},hr);
+el('path',{d:'M358,275L365,262L372,275Z',fill:'#1f2937'},hPumpG);
+txt(hComp,334,262,'PE','lbl',{'text-anchor':'end'});
+const hMot=el('g',{'data-tip':'<b>Pumpenmotor M9</b> treibt die Rückförderpumpe an.'},hComp);
+el('line',{x1:389,y1:285,x2:422,y2:285,stroke:'#4b5563','stroke-width':3},hMot);
+el('circle',{cx:440,cy:285,r:18,class:'inkf'},hMot);
+const mr=el('g',{class:'rotor'},hMot);el('path',{d:'M440,272V298M427,285H453',stroke:'#cbd5e1','stroke-width':3},mr);
+txt(hMot,440,291,'M','lbl',{'text-anchor':'middle'});
+/* Speicher AC */
+const hAC=el('g',{'data-tip':'<b>AC Druckspeicher</b> (Niederdruckspeicher)<br>nimmt beim ABS-Druckabbau Bremsflüssigkeit auf.'},hComp);
+el('rect',{x:452,y:372,width:26,height:42,rx:13,class:'inkf'},hAC);
+const hACf=el('rect',{x:455,y:375,width:20,height:36,rx:10,fill:'var(--lred)',opacity:0},hAC);
+el('line',{x1:452,y1:393,x2:478,y2:393,class:'ink'},hAC);
+txt(hComp,486,398,'AC','lbl');
+/* Räder */
+const HW={};
+for(const [id,x] of [['HL',125],['VR',600]]){
+  const g=el('g',{'data-tip':`<b>Radbremse ${id}</b>`},hComp);
+  el('circle',{cx:x,cy:680,r:27,fill:'#fff',stroke:'#1f2937','stroke-width':2.5},g);
+  const f=el('circle',{cx:x,cy:680,r:16,fill:'var(--red)',opacity:0},g);
+  el('circle',{cx:x,cy:680,r:16,fill:'none',stroke:'#1f2937','stroke-width':2},g);
+  el('rect',{x:x+38,y:655,width:10,height:50,rx:2,fill:'#eef0f3',stroke:'#9ca3af'},g);
+  const bar=el('rect',{x:x+39,y:704,width:8,height:0,fill:'var(--red)'},g);
+  txt(g,x-40,688,id,'lbl-b',{'text-anchor':'end'});
+  HW[id]={f,bar,p:0};
+}
+/* Nummern Aufgabe 4 */
+badge(185,128,'1');badge(505,128,'2');badge(918,200,'3');badge(312,236,'4');badge(205,270,'6');badge(680,270,'6');badge(300,505,'7');badge(512,505,'7');badge(500,362,'8');
+
+let hMode='ruhe', hX='HL', hT=0;
+const hO=()=>hX==='HL'?'VR':'HL';
+function hEnergized(){
+  const e={HSV:false,USV:false,EV_HL:false,EV_VR:false,AV_HL:false,AV_VR:false};
+  if(hMode==='abs'){e['EV_'+hX]=true;e['AV_'+hX]=true;}
+  if(hMode==='esp'){e.HSV=true;e.USV=true;e['EV_'+hO()]=true;}
+  return e;
+}
+const hFault=()=>document.getElementById('fHSV').checked;
+function hStates(){
+  const S={}; for(const k in HP)S[k]='0';
+  const X=hX,O=hO(); const flow=hT<2.5;
+  const F=flow?'Pf':'P';
+  if(hMode==='normal'){
+    Object.assign(S,{mc:F,mcH:'P',pu:'P',usvIn:F,usvBy:'P',usvOut:F,nodeR:F,nodeL:F,pumpOut:'P'});
+    for(const w of ['HL','VR']){S[w+'_evIn']=F;S[w+'_evOut']=F;S[w+'_wh']=F;S[w+'_avIn']='P';S[w+'_by']='P';}
+  }
+  if(hMode==='abs'){
+    Object.assign(S,{mc:'Pr',mcH:'P',pu:'P',usvIn:'Pr',usvBy:'P',usvOut:'Pr',nodeR:'Pr',nodeL:'P',pumpOut:'Pf',pIn1:'Lf',pIn2:'Lf',ac:'L'});
+    S[X+'_evIn']='P';S[X+'_evOut']='P';S[X+'_wh']='Pr';S[X+'_avIn']='Pf';S[X+'_avOut']='Lf';
+    S[O+'_evIn']='P';S[O+'_evOut']='P';S[O+'_wh']='P';S[O+'_avIn']='P';S[O+'_by']='P';
+  }
+  if(hMode==='esp'){
+    if(hFault()){ /* HSV bleibt zu: Pumpe kann nichts ansaugen */ }
+    else{
+      Object.assign(S,{mc:'S',mcH:'S',hsvOut:'S',pIn2:'S',pumpOut:'Pf',usvOut:'P'});
+      if(X==='HL'){S.nodeL='Pf';S.nodeR='P';}else{S.nodeR='Pr';S.nodeL='P';}
+      S[X+'_evIn']='Pf';S[X+'_evOut']='Pf';S[X+'_wh']='Pf';S[X+'_avIn']='P';S[X+'_by']='P';
+      S[O+'_evIn']='P';
+    }
+  }
+  return S;
+}
+function hTargets(){
+  const t={HL:0,VR:0};
+  if(hMode==='normal'){t.HL=1;t.VR=1;}
+  if(hMode==='abs'){t[hX]=0.25;t[hO()]=1;}
+  if(hMode==='esp'&&!hFault()){t[hX]=0.6;}
+  return t;
+}
+function hRender(dt){
+  hT+=dt;
+  const S=hStates();
+  for(const k in S){const g=HSEG[k];if(g.dataset.s!==S[k])g.setAttribute('data-s',S[k]);}
+  const E=hEnergized();
+  for(const k in HV){const v=HV[k];let on=E[k];if(k==='HSV'&&hFault())on=false;
+    v.coilEl.classList.toggle('en',on);
+    const t=on?-BW:0; if(Math.abs(v.shift-t)>0.05)setShift(v,v.shift+(t-v.shift)*0.3);else if(v.shift!==t)setShift(v,t);}
+  const run=hMode==='abs'||hMode==='esp';
+  hPumpG.classList.toggle('run',run);hMot.classList.toggle('run',run);
+  hACf.setAttribute('opacity',hMode==='abs'?0.9:0);
+  const T=hTargets();
+  for(const id in HW){const w=HW[id];w.p+=(T[id]-w.p)*Math.min(1,dt*1.6);w.f.setAttribute('opacity',(w.p*0.9).toFixed(2));const h=48*w.p;w.bar.setAttribute('height',h.toFixed(1));w.bar.setAttribute('y',(704-h).toFixed(1));}
+  document.getElementById('pedal').classList.toggle('pressed',hMode==='normal'||hMode==='abs');
+}
+const H_TXT={
+  ruhe:()=>['Ruhe – keine Bremsung','Alle Magnetventile sind <b>stromlos</b> und stehen in Ruhestellung: <b>HSV zu</b>, <b>USV offen</b>, <b>EV offen</b>, <b>AV zu</b>. Pumpe aus.'],
+  normal:()=>['Fahrer bremst – normale Bremsung','Der Hauptbremszylinder drückt Bremsflüssigkeit über das <b>offene USV</b> und die <b>offenen Einlassventile</b> zu HL und VR. Das HSV bleibt zu, die Pumpe steht. Der Drucksensor meldet dem Steuergerät den Bremsdruck des Fahrers.'],
+  abs:()=>[`ABS: Druckabbau am Rad ${hX}`,`Rad ${hX} droht zu blockieren. <b>EV ${hX} zu</b>, <b>AV ${hX} offen</b> → Bremsflüssigkeit fließt in den Speicher <b>AC</b>. Die Pumpe fördert sie über das offene USV zurück zum Hauptbremszylinder (Pedal pulsiert). HSV bleibt zu.`],
+  esp:()=>hFault()?[`ESP-Eingriff an ${hX} – Fehler 058C!`,`Das Steuergerät will ${hX} bremsen, aber das <b>HSV bekommt keine Spannung</b> und bleibt <b>geschlossen</b>. Die Pumpe läuft, kann aber <b>nichts ansaugen</b> → kein Bremsdruck → <b>keine ESP-Regelung</b> (Kundenbeanstandung!).`]
+    :[`ESP: aktiver Bremseingriff an ${hX}`,`${hX==='HL'?'Beispiel: Das Auto <b>untersteuert</b> in einer Linkskurve → das kurveninnere Hinterrad HL wird gebremst, das Auto dreht in die Kurve ein.':'Beispiel: Das Auto <b>übersteuert</b> in einer Linkskurve → das kurvenäußere Vorderrad VR wird gebremst, das Heck wird stabilisiert.'}<br>Der Fahrer bremst <b>nicht</b>. Darum: <b>HSV offen</b> (Pumpe saugt über die gelbe Saugleitung an), <b>USV zu</b> (Druck kann nicht zurück), <b>EV ${hX} offen</b>, <b>EV ${hO()} zu</b> (anderes Rad wird nicht gebremst), AV zu.`]
+};
+const VNAMES={HSV:'HSV',USV:'USV',EV_HL:'EV HL',EV_VR:'EV VR',AV_HL:'AV HL',AV_VR:'AV VR'};
+function hPanel(){
+  const [t,d]=H_TXT[hMode]();document.getElementById('hTitle').textContent=t;document.getElementById('hText').innerHTML=d;
+  const E=hEnergized();
+  document.getElementById('hTab').innerHTML=Object.keys(HV).map(k=>{const v=HV[k];let on=E[k];if(k==='HSV'&&hFault())on=false;
+    const open=(v.rest==='open')!==on;
+    return `<tr><td><b>${VNAMES[k]}</b></td><td>${v.rest==='open'?'offen':'zu'}</td><td class="${open?'o':'z'}">${open?'offen':'zu'}${on?' ⚡':''}</td></tr>`;}).join('');
+  const run=hMode==='abs'||hMode==='esp';
+  document.getElementById('hPump').textContent=run?(hMode==='esp'&&hFault()?'läuft – saugt nichts an!':'läuft'):'aus';
+  const pd=(hMode==='normal'||hMode==='abs')?1:0;
+  document.getElementById('hPU').textContent=fmt(1.5+2.5*pd,2)+' V'+(pd?' (Fahrer bremst)':' (Fahrer bremst nicht)');
+}
+function setHMode(m){hMode=m;hT=0;document.querySelectorAll('[data-hm]').forEach(b=>b.classList.toggle('on',b.dataset.hm===m));hPanel();}
+document.querySelectorAll('[data-hm]').forEach(b=>b.addEventListener('click',()=>setHMode(b.dataset.hm)));
+document.getElementById('hWheel').addEventListener('change',e=>{hX=e.target.value;hT=0;hPanel();});
+document.getElementById('fHSV').addEventListener('change',()=>{hT=0;hPanel();});
+document.getElementById('nums').addEventListener('change',e=>H.classList.toggle('showbadges',e.target.checked));
+setHMode('ruhe');
+
+/* ======================================================================
+   TAB 2 – SPANNUNGSVERSORGUNG
+   ====================================================================== */
+const E=document.getElementById('esvg');
+const eBg=el('g',{},E), eW=el('g',{},E), eC=el('g',{},E), eTop=el('g',{},E);
+const VAL=[['HSV',620],['USV',670],['EV HL',720],['EV VR',770],['AV HL',820],['AV VR',870]];
+const es={z:true,vr:false,mot:false,valves:{},U:12.6,fault:'none',fuse:true};
+VAL.forEach(([n])=>es.valves[n]=false);
+document.getElementById('eValves').innerHTML='Ventile ansteuern: '+VAL.map(([n])=>`<label><input type="checkbox" data-v="${n}"> ${n}</label>`).join('');
+
+/* Hintergrund-Kästen */
+el('rect',{x:150,y:110,width:810,height:70,rx:4,fill:'#ece9f6',stroke:'#8b84b4'},eBg);
+txt(eBg,555,140,'ESP-Steuergerät A2.15 – Steckverbindung','lbl',{'text-anchor':'middle'});
+el('rect',{x:40,y:230,width:200,height:280,rx:6,fill:'#e0ecfa',stroke:'#93b4d8'},eBg);
+txt(eBg,140,248,'Elektronik-Schutzrelais','lbl-s',{'text-anchor':'middle'});
+el('rect',{x:262,y:230,width:140,height:240,rx:6,fill:'#fdf6d8',stroke:'#e4d48a'},eBg);
+txt(eBg,332,248,'Motorrelais','lbl-s',{'text-anchor':'middle'});
+el('rect',{x:420,y:230,width:180,height:240,rx:6,fill:'#fbe9e9',stroke:'#e6b4b4'},eBg);
+txt(eBg,510,248,'Ventilrelais','lbl-s',{'text-anchor':'middle'});
+el('rect',{x:605,y:240,width:290,height:190,rx:6,fill:'#fbeeee',stroke:'#e6b4b4','stroke-dasharray':'5 4'},eBg);
+txt(eBg,750,448,'Magnetventile (Hydroaggregat)','lbl-s',{'text-anchor':'middle'});
+
+/* Leitungen: [Pfad, Knoten, Strom?] */
+const WIRES=[];
+function wire(d,node,cur,gnd){const p=el('path',{d,class:'w'},eW);const c=el('path',{d,class:'wc'},eW);WIRES.push({p,c,node,cur,gnd});}
+wire('M30,40H970','K30');
+wire('M30,70H970','K15');
+wire('M30,560H970','G',null,true);
+/* Schutzrelais */
+wire('M70,40V270','K30',()=>es.I>0.01);
+wire('M70,310V340','F',()=>es.I>0.01);
+wire('M70,380V410H190V250','S87',()=>es.I>0.01||es.zLeit);
+wire('M190,250V215','R87',()=>es.I>0.01);
+wire('M190,215V180','P1',()=>es.sg);
+wire('M130,70V300','K15',()=>es.z&&es.fuse);
+wire('M130,340V560','G',()=>es.z&&es.fuse,true);
+wire('M190,410V440','S87',()=>es.zLeit);
+wire('M190,470V560','G',()=>es.zLeit,true);
+/* Plus-Schiene zu den Relais */
+wire('M190,215H560','R87',()=>es.I>0.4);
+/* Motorrelais */
+wire('M290,215V290','R87',()=>es.motE);
+wire('M290,330V360H340V223A8,8 0 0 0 340,207V180','P28',()=>es.motE);
+wire('M370,215V300','R87',()=>es.motE);
+wire('M370,340V478','MP',()=>es.motE);
+wire('M370,522V560','G',()=>es.motE,true);
+/* Ventilrelais */
+wire('M450,215V290','R87',()=>es.vrE);
+wire('M450,330V360H500V223A8,8 0 0 0 500,207V180','P27',()=>es.vrE);
+wire('M560,215V290','R87',()=>es.vrE&&es.nV>0);
+wire('M560,330V380H870','V87',()=>es.vrE&&es.nV>0);
+VAL.forEach(([n,x])=>{wire(`M${x},380V294`,'V87',()=>es.vrE&&es.valves[n]);wire(`M${x},260V180`,'VP_'+n,()=>es.vrE&&es.valves[n]);});
+/* Masse SG */
+wire('M920,180V560','P10',()=>es.sg,true);
+/* Warnlampe */
+wire('M570,70V81','K15',()=>es.lamp);
+wire('M570,99V110','LP',()=>es.lamp);
+
+/* Bauteile Elektrik */
+function eLabel(x,y,t,anchor){txt(eC,x,y,t,'lbl-s',{'text-anchor':anchor||'start'});}
+txt(eC,24,45,'30','lbl',{'text-anchor':'end'});txt(eC,24,75,'15','lbl',{'text-anchor':'end'});txt(eC,24,565,'31','lbl',{'text-anchor':'end'});
+/* Sicherung */
+(function(){const g=el('g',{'data-tip':'<b>Sicherung im Schutzrelais</b><br>spricht an, wenn die Z-Diode bei Überspannung leitet.'},eC);
+  el('rect',{x:62,y:270,width:16,height:40,rx:2,class:'inkf'},g);const l=el('line',{x1:70,y1:272,x2:70,y2:308,stroke:'#1f2937','stroke-width':2},g);es.fuseLine=l;})();
+eLabel(78,262,'30');
+/* Schalter Schutzrelais */
+const eSw1=el('line',{x1:70,y1:340,x2:70,y2:380,stroke:'#1f2937','stroke-width':3},eC);
+el('circle',{cx:70,cy:340,r:3,fill:'#1f2937'},eC);el('circle',{cx:70,cy:380,r:3,fill:'#1f2937'},eC);
+/* Spule Schutzrelais */
+const eCoil1=el('rect',{x:120,y:300,width:20,height:40,class:'coil','data-tip':'<b>Spule Schutzrelais</b> – wird über Kl. 15 (Zündung) bestromt.'},eC);
+eLabel(198,262,'87');
+/* Z-Diode (Kathode oben) */
+(function(){const g=el('g',{'data-tip':'<b>Z-Diode</b> (Überspannungsschutz)<br>in Sperrrichtung eingebaut. Ab der Z-Spannung (hier 18 V) leitet sie, der Strom fließt zur Masse und die Sicherung spricht an.'},eC);
+  el('rect',{x:175,y:438,width:30,height:34,fill:'transparent'},g);
+  el('path',{d:'M180,470L200,470L190,445Z',fill:'#fff',stroke:'#1f2937','stroke-width':2},g);
+  el('path',{d:'M178,449L180,445H200L202,441',fill:'none',stroke:'#1f2937','stroke-width':2.2},g);
+  es.zMark=el('text',{x:212,y:466,class:'lbl',fill:'#dc2626'},g);es.zMark.textContent='';})();
+/* Motorrelais */
+const eCoil2=el('rect',{x:280,y:290,width:20,height:40,class:'coil','data-tip':'<b>Spule Motorrelais</b> – SG schaltet über PIN 28 Masse.'},eC);
+const eSw2=el('line',{x1:370,y1:300,x2:370,y2:340,stroke:'#1f2937','stroke-width':3},eC);
+el('circle',{cx:370,cy:300,r:3,fill:'#1f2937'},eC);el('circle',{cx:370,cy:340,r:3,fill:'#1f2937'},eC);
+const eMot=el('g',{'data-tip':'<b>Pumpenmotor M9</b> (Rückförderpumpe)'},eC);
+el('circle',{cx:370,cy:500,r:22,class:'inkf'},eMot);const emr=el('g',{class:'rotor'},eMot);el('path',{d:'M370,484V516M354,500H386',stroke:'#cbd5e1','stroke-width':3},emr);
+txt(eMot,370,506,'M','lbl',{'text-anchor':'middle'});
+/* Ventilrelais */
+const eCoil3=el('rect',{x:440,y:290,width:20,height:40,class:'coil','data-tip':'<b>Spule Ventilrelais</b><br>Kl. 86 = Plus, Kl. 85 = PIN 27. Schaltet das SG an PIN 27 Masse durch, zieht das Relais an.'},eC);
+const eSw3=el('line',{x1:560,y1:290,x2:560,y2:330,stroke:'#1f2937','stroke-width':3},eC);
+el('circle',{cx:560,cy:290,r:3,fill:'#1f2937'},eC);el('circle',{cx:560,cy:330,r:3,fill:'#1f2937'},eC);
+eLabel(456,282,'86');eLabel(506,372,'85');eLabel(566,282,'30');eLabel(566,350,'87');
+/* Ventilspulen */
+const eVC={};
+VAL.forEach(([n,x])=>{eVC[n]=el('rect',{x:x-8,y:260,width:16,height:34,class:'coil','data-tip':`<b>Magnetventil ${n}</b><br>Plus kommt über das Ventilrelais (Kl. 87), das Steuergerät schaltet Masse.`},eC);
+  txt(eC,x,412,n,'lbl-s',{'text-anchor':'middle',style:'font-size:10.5px'});});
+/* Warnlampe */
+const eLamp=el('circle',{cx:570,cy:90,r:9,fill:'#fff',stroke:'#1f2937','stroke-width':2,'data-tip':'<b>ESP-Warnlampe</b> – leuchtet, wenn das Steuergerät nicht arbeitet.'},eC);
+el('path',{d:'M564,84L576,96M576,84L564,96',stroke:'#1f2937','stroke-width':1.5},eC);
+/* PIN-Beschriftungen */
+for(const [x,t] of [[190,'1'],[340,'28'],[500,'27'],[920,'10']]) txt(eC,x+6,198,t,'lbl',{style:'font-size:13px'});
+txt(eC,578,122,'29','lbl',{style:'font-size:12px'});
+/* Messpunkte */
+const MP={
+  K30:['Kl. 30 (Batterie-Plus)',960,40], K15:['Kl. 15 (Zündung)',960,70], G:['Kl. 31 / Masse',960,560],
+  P1:['PIN 1 (SG-Versorgung)',190,190], P10:['PIN 10 (SG-Masse)',920,195], R87:['Schutzrelais Kl. 87',190,240],
+  P27:['PIN 27 (Ventilrelais Kl. 85)',500,190], V87:['Ventilrelais Kl. 87 (Ventil-Plus)',600,380], VP_HSV:['HSV – Leitung zum SG',620,215],
+  P28:['PIN 28 (Motorrelais)',340,190], MP:['Pumpenmotor +',370,430]
+};
+const mP=document.getElementById('mP'), mN=document.getElementById('mN');
+for(const k in MP){mP.insertAdjacentHTML('beforeend',`<option value="${k}">${MP[k][0]}</option>`);mN.insertAdjacentHTML('beforeend',`<option value="${k}">${MP[k][0]}</option>`);}
+mP.value='P1';mN.value='P10';
+const prR=el('circle',{r:7,class:'probe-r'},eTop), prB=el('circle',{r:7,class:'probe-b'},eTop);
+
+function eCalc(){
+  const U=es.U, Rp=es.fault==='plus'?0.15:0.004, Rm=es.fault==='masse'?0.15:0.004;
+  es.zLeit=es.z&&es.fuse&&U>=18;
+  if(es.zLeit){es.fuseBlowT=(es.fuseBlowT||0)+1;if(es.fuseBlowT>25){es.fuse=false;es.zLeit=false;es.blown=true;}} else es.fuseBlowT=0;
+  const F=es.fuse?U:0, S87=(es.z&&F>0)?F:0;
+  let I=0,R87=0,P10=0,sg=false;
+  for(let k=0;k<3;k++){
+    R87=Math.max(0,S87-I*Rp); P10=S87>0?I*Rm:0; sg=(R87-P10)>=9;
+    const vrE=sg&&es.vr, motE=sg&&es.mot; const nV=vrE?VAL.filter(([n])=>es.valves[n]).length:0;
+    I=(sg?0.3:0)+(vrE?0.2:0)+nV*2.2+(motE?15:0);
+    Object.assign(es,{vrE,motE,nV});
+  }
+  es.I=S87>0?I:0;
+  const pot={K30:U,K15:es.z?U:0,G:0,F,S87,R87,P1:R87,P10};
+  pot.P27=R87>0?(es.vrE?P10:R87):0;
+  pot.V87=es.vrE?R87:0;
+  VAL.forEach(([n])=>pot['VP_'+n]=pot.V87>0?(es.valves[n]?P10:pot.V87):0);
+  pot.P28=R87>0?(es.motE?P10:R87):0;
+  pot.MP=es.motE?R87:0;
+  es.sg=sg; es.lamp=es.z&&!sg; pot.LP=es.lamp?0:pot.K15;
+  es.pot=pot;
+}
+function wCol(v,gnd){if(gnd)return '#1e40af';if(v>=9)return '#dc2626';if(v>=1)return '#f59e0b';return '#cbd5e1';}
+function eRender(){
+  eCalc(); const pot=es.pot;
+  for(const w of WIRES){w.p.setAttribute('stroke',wCol(pot[w.node]??0,w.gnd));w.c.classList.toggle('on',!!(w.cur&&w.cur()));}
+  eSw1.setAttribute('x2',es.z&&es.fuse?70:84);
+  eCoil1.classList.toggle('en',es.z&&es.fuse);
+  eCoil2.classList.toggle('en',es.motE);eSw2.setAttribute('x2',es.motE?370:384);
+  eCoil3.classList.toggle('en',es.vrE);eSw3.setAttribute('x2',es.vrE?560:574);
+  VAL.forEach(([n])=>eVC[n].classList.toggle('en',es.vrE&&es.valves[n]));
+  eMot.classList.toggle('run',es.motE);
+  eLamp.setAttribute('fill',es.lamp?'#facc15':'#fff');
+  es.fuseLine.setAttribute('stroke',es.fuse?'#1f2937':'#dc2626');es.fuseLine.setAttribute('stroke-dasharray',es.fuse?'':'6 6');
+  es.zMark.textContent=es.zLeit?'⚡ leitet':'';
+  const a=MP[mP.value],b=MP[mN.value];prR.setAttribute('cx',a[1]);prR.setAttribute('cy',a[2]);prB.setAttribute('cx',b[1]+(a===b?10:0));prB.setAttribute('cy',b[2]);
+  /* Messgerät */
+  const v=(pot[mP.value]??0)-(pot[mN.value]??0), r=document.getElementById('mR').value, lcd=document.getElementById('lcd');
+  let msg='';
+  if(r==='V20'){lcd.innerHTML=Math.abs(v)>=20?'1. <small>Überlauf</small>':v.toFixed(2)+' <small>V</small>';}
+  else if(r==='V200'){lcd.innerHTML=v.toFixed(1)+' <small>V</small>';msg='Bereich 200 V ist zu grob – für das Bordnetz <b>V⎓ 20</b> wählen (Aufgabe 8b).';}
+  else if(r==='VAC'){lcd.innerHTML='0.0 <small>V~</small>';msg='Wechselspannungsbereich ist falsch – das Bordnetz hat <b>Gleichspannung</b>.';}
+  else if(r==='OHM'){lcd.innerHTML='– – –';msg='<b>Achtung:</b> Widerstand nie im spannungsführenden Stromkreis messen!';}
+  else {lcd.innerHTML=Math.abs(v)>0.5?'<small>Sicherung defekt!</small>':'0.00 <small>A</small>';msg='<b>Falsch:</b> Im Strommessbereich parallel angeschlossen → Kurzschluss über das Messgerät!';}
+  const box=document.getElementById('eMsg');
+  if(!msg){
+    if(mP.value==='P1'&&(mN.value==='P10'||mN.value==='G')){
+      msg=`<b>Richtig gemessen (Aufgabe 8a):</b> Plus an PIN 1, COM an ${mN.value==='P10'?'PIN 10':'Masse'}.`;
+      if(es.fault!=='none'&&es.I>5)msg+=` Unter Last ist die Spannung um <b>${fmt(es.U-v,2)} V</b> eingebrochen → Übergangswiderstand gefunden!`;
+      else if(es.fault!=='none')msg+=' Ohne Last ist der Fehler kaum zu sehen – jetzt Motor/Ventile einschalten (Last).';
+      box.className='box ok';
+    } else {msg='Messpunkte frei wählbar. Für Aufgabe 8a: <b>rot an PIN 1</b>, <b>schwarz an PIN 10 / Masse</b>.';box.className='box';}
+    if(mP.value==='VP_HSV'&&es.vrE&&!es.valves.HSV)msg+='<br>HSV nicht angesteuert: Auf beiden Seiten der Spule liegt Plus – darum misst man gegen Masse volle Spannung.';
+  } else box.className='box warn';
+  if(es.blown)msg+='<br><b>Sicherung durchgebrannt</b> (Überspannung) → Steuergerät ohne Spannung, ESP aus, Warnlampe an. „Sicherung ersetzen“ klicken.';
+  box.innerHTML=msg;
+  document.getElementById('eState').innerHTML=
+    `Steuergerät: <b>${es.sg?'arbeitet':'aus'}</b> · Strom durch die Versorgung: <b>${fmt(es.I,1)} A</b><br>`+
+    `Ventilrelais: <b>${es.vrE?'angezogen':'abgefallen'}</b> · Pumpenmotor: <b>${es.motE?'läuft':'aus'}</b><br>`+
+    `<span style="color:var(--mut)">Aufgabe 10: Das SG schaltet an PIN 27 <b>Masse</b>. Dadurch zieht das Ventilrelais an und legt <b>positives Potential</b> (Plus) an die Magnetventile.</span>`;
+}
+document.getElementById('eZ').addEventListener('change',e=>es.z=e.target.checked);
+document.getElementById('eVR').addEventListener('change',e=>es.vr=e.target.checked);
+document.getElementById('eMot').addEventListener('change',e=>es.mot=e.target.checked);
+document.querySelectorAll('#eValves input').forEach(c=>c.addEventListener('change',()=>{es.valves[c.dataset.v]=c.checked;if(c.checked&&!es.vr){es.vr=true;document.getElementById('eVR').checked=true;}}));
+document.getElementById('eU').addEventListener('input',e=>{es.U=parseFloat(e.target.value);document.getElementById('eUv').textContent=fmt(es.U,1)+' V';});
+document.getElementById('eF').addEventListener('change',e=>es.fault=e.target.value);
+document.getElementById('eFuse').addEventListener('click',()=>{es.fuse=true;es.blown=false;if(es.U>=18){es.U=12.6;document.getElementById('eU').value=12.6;document.getElementById('eUv').textContent='12,6 V';}});
+
+/* ======================================================================
+   TAB 3 – DRUCKSENSOR
+   ====================================================================== */
+const PS=document.getElementById('psvg');
+const psW=el('g',{},PS), psC=el('g',{},PS);
+const ps={ped:0,ramp:false,z:true,fault:'none',hist:[],t:0};
+el('rect',{x:40,y:300,width:920,height:60,rx:4,fill:'#ece9f6',stroke:'#8b84b4'},psC);
+txt(psC,60,337,'A2.15 ESP-Steuergerät','lbl-b');
+const sens=el('g',{'data-tip':'<b>B2.30 Drucksensor</b><br>Kl. 1 → PIN 33 · Kl. 2 Masse → PIN 21 · Kl. 3 +5 V → PIN 20 · Kl. 4 Signal → PIN 8'},psC);
+el('rect',{x:560,y:40,width:200,height:100,class:'inkf'},sens);
+el('line',{x1:560,y1:140,x2:760,y2:40,class:'ink'},sens);
+txt(sens,590,85,'p','lbl-b',{style:'font-size:30px'});txt(sens,700,128,'U','lbl-b',{style:'font-size:30px'});
+txt(psC,660,30,'B2.30','lbl-b',{'text-anchor':'middle'});
+/* Membrane + Druckanzeige */
+const memb=el('path',{d:'M575,140Q610,140 645,140',fill:'none',stroke:'#b91c1c','stroke-width':3},psC);
+const PSPIN=[[600,'1','33','PIN 33'],[640,'2','21','− PIN 21'],[680,'3','20','+ PIN 20'],[720,'4','8','PIN 8']];
+const psWire={};
+PSPIN.forEach(([x,kl,pin,lab])=>{psWire[pin]=el('path',{d:`M${x},140V300`,class:'w',stroke:'#cbd5e1'},psW);
+  txt(psC,x+5,160,kl,'lbl',{style:'font-size:13px'});txt(psC,x,322,pin,'lbl',{'text-anchor':'middle',style:'font-size:14px'});});
+txt(psC,780,232,'Kl. 3 = +5 V Versorgung','lbl-s');txt(psC,780,250,'Kl. 2 = Masse','lbl-s');txt(psC,780,268,'Kl. 4 = Signal','lbl-s');txt(psC,780,286,'Kl. 1 → PIN 33 (hier nicht geprüft)','lbl-s');
+const brk=el('text',{x:735,y:225,class:'lbl',fill:'#dc2626'},psC);
+/* Pedal + Hauptbremszylinder */
+const psPed=el('g',{style:'transform-box:view-box;transform-origin:150px 40px;transition:transform .1s'},psC);
+el('line',{x1:150,y1:40,x2:140,y2:200,stroke:'#1f2937','stroke-width':7,'stroke-linecap':'round'},psPed);
+el('rect',{x:118,y:198,width:42,height:10,rx:3,fill:'#1f2937'},psPed);
+el('circle',{cx:150,cy:40,r:5,fill:'#1f2937'},psC);
+el('rect',{x:250,y:90,width:150,height:50,rx:5,class:'inkf'},psC);
+const piston=el('rect',{x:256,y:98,width:20,height:34,fill:'#94a3b8'},psC);
+const fluid=el('rect',{x:278,y:98,width:116,height:34,fill:'#b91c1c',opacity:0.15},psC);
+txt(psC,325,82,'Hauptbremszylinder','lbl-s',{'text-anchor':'middle'});
+el('path',{d:'M400,115H520V115',class:'pb'},psC);const psLine=el('path',{d:'M400,115H520',fill:'none',stroke:'#b91c1c','stroke-width':6,opacity:0},psC);
+el('path',{d:'M520,115H560',class:'pb'},psC);
+const psRod=el('line',{x1:200,y1:115,x2:256,y2:115,stroke:'#1f2937','stroke-width':4},psC);
+const psP=txt(psC,325,170,'0 bar','lbl-b',{'text-anchor':'middle'});
+/* Diagramm */
+const PC=document.getElementById('pchart');
+const yU=u=>200-u*38;
+el('line',{x1:70,y1:200,x2:980,y2:200,stroke:'#1f2937','stroke-width':1.5},PC);
+el('line',{x1:70,y1:200,x2:70,y2:12,stroke:'#1f2937','stroke-width':1.5},PC);
+txt(PC,22,110,'U','lbl-b');txt(PC,975,222,'t','lbl-b',{'text-anchor':'end'});
+for(const [u,l] of [[0,'0 V'],[1.5,'1,5 V'],[4,'4,0 V'],[5,'5,0 V']]){el('line',{x1:70,y1:yU(u),x2:980,y2:yU(u),stroke:u===1.5||u===4?'#fca5a5':'#e5e7eb','stroke-dasharray':u===1.5||u===4?'6 4':''},PC);txt(PC,64,yU(u)+4,l,'lbl-s',{'text-anchor':'end'});}
+const psPoly=el('polyline',{fill:'none',stroke:'#dc2626','stroke-width':2.5,'stroke-linejoin':'round'},PC);
+function psSig(){
+  if(!ps.z)return {s:0,v20:0,v21:0};
+  const ideal=1.5+2.5*ps.ped/100;
+  let s=ideal,v21=0;
+  if(ps.fault==='sig')s=0;
+  if(ps.fault==='masse'){v21=0;s=4.9;}
+  if(ps.fault==='stuck')s=1.5;
+  return {s,v20:5.0,v21,ideal};
+}
+function psRender(dt){
+  if(ps.ramp){ps.ped=Math.min(100,ps.ped+dt*18);if(ps.ped>=100)ps.ramp=false;document.getElementById('pPed').value=ps.ped;}
+  document.getElementById('pPedv').textContent=Math.round(ps.ped)+' %';
+  const p=ps.ped*1.6;
+  psPed.style.transform=`rotate(${-ps.ped*0.18}deg)`;
+  piston.setAttribute('x',256+ps.ped*0.5);psRod.setAttribute('x2',256+ps.ped*0.5);
+  fluid.setAttribute('opacity',(0.15+ps.ped/130).toFixed(2));psLine.setAttribute('opacity',ps.ped>1?0.9:0);
+  memb.setAttribute('d',`M575,140Q610,${140-ps.ped*0.25} 645,140`);
+  psP.textContent=fmt(p,0)+' bar';
+  const S=psSig();
+  const pot={'8':S.s,'20':S.v20,'21':S.v21,'m':0};
+  psWire['20'].setAttribute('stroke',ps.z?'#dc2626':'#cbd5e1');
+  psWire['21'].setAttribute('stroke',ps.fault==='masse'?'#cbd5e1':'#1e40af');psWire['21'].setAttribute('stroke-dasharray',ps.fault==='masse'?'8 6':'');
+  psWire['8'].setAttribute('stroke',ps.fault==='sig'||!ps.z?'#cbd5e1':'#16a34a');psWire['8'].setAttribute('stroke-dasharray',ps.fault==='sig'?'8 6':'');
+  psWire['33'].setAttribute('stroke','#94a3b8');
+  brk.textContent=ps.fault==='sig'?'✂':ps.fault==='masse'?'':'';
+  ps.t+=dt; if(ps.t>0.08){ps.t=0;ps.hist.push(S.s);if(ps.hist.length>227)ps.hist.shift();
+    psPoly.setAttribute('points',ps.hist.map((u,i)=>`${72+i*4},${yU(u).toFixed(1)}`).join(' '));}
+  const a=document.getElementById('pmP').value,b=document.getElementById('pmN').value;
+  const v=pot[a]-pot[b];
+  document.getElementById('pLcd').innerHTML=v.toFixed(2)+' <small>V</small>';
+  let msg='',cls='box';
+  if(a==='8'&&b==='21'){
+    if(!ps.z){msg='Zündung aus – Sensor wird nicht versorgt.';}
+    else if(v>=1.4&&v<=4.1&&ps.fault==='none'){msg=`<b>Richtig gemessen (Aufgabe 11c):</b> PIN 8 (Signal) gegen PIN 21 (Masse). ${fmt(v,2)} V liegt im Sollbereich 1,5 … 4,0 V.`;cls='box ok';}
+    else {msg=`<b>Signal unplausibel → Fehlercode P1914!</b> ${ps.fault==='stuck'?'Das Signal bleibt bei 1,5 V, obwohl gebremst wird.':'Der Wert liegt außerhalb von 1,5 … 4,0 V.'}`;cls='box warn';}
+  } else if(a==='20'&&(b==='21'||b==='m')){msg=`Versorgungsspannung Kl. 3: ${fmt(v,2)} V – Soll 4,5 … 5,2 V.`;cls=v>=4.5&&v<=5.2?'box ok':'box warn';}
+  else msg='Für die Signalspannung: <b>rot an PIN 8</b>, <b>schwarz an PIN 21</b>.';
+  const pm=document.getElementById('pMsg');pm.className=cls;pm.innerHTML=msg;
+  document.getElementById('pForce').innerHTML=`Druck p = <b>${fmt(p,0)} bar</b> = ${fmt(p*10,0)} N/cm² (1 bar = 10 N/cm²)<br>Membranfläche A = 1,13 cm²<br>F = p · A = ${fmt(p*10,0)} N/cm² · 1,13 cm² = <b>${fmt(p*11.3,0)} N</b>`;
+}
+document.getElementById('pPed').addEventListener('input',e=>{ps.ped=parseFloat(e.target.value);ps.ramp=false;});
+document.getElementById('pRamp').addEventListener('click',()=>{ps.ped=0;ps.hist=[];ps.ramp=true;});
+document.getElementById('pRel').addEventListener('click',()=>{ps.ped=0;ps.ramp=false;document.getElementById('pPed').value=0;});
+document.getElementById('p30').addEventListener('click',()=>{ps.ped=30/1.6;ps.ramp=false;document.getElementById('pPed').value=ps.ped;});
+document.getElementById('pZ').addEventListener('change',e=>ps.z=e.target.checked);
+document.getElementById('pF').addEventListener('change',e=>ps.fault=e.target.value);
+
+/* ======================================================================
+   TAB 4 – ENTLÜFTEN
+   ====================================================================== */
+const B=document.getElementById('bsvg');
+const bG=el('g',{},B);
+const WHEELS4=[['HR',130],['HL',370],['VR',630],['VL',870]];
+const bs={step:0,vol:{},bub:{},t:0};
+WHEELS4.forEach(([w])=>{bs.vol[w]=0;});
+/* Wartungsgerät + Behälter + Hydroaggregat */
+const dev=el('g',{'data-tip':'<b>Bremsenwartungsgerät</b><br>füllt die Anlage unter Druck mit neuer Bremsflüssigkeit.'},bG);
+el('rect',{x:40,y:20,width:120,height:80,rx:8,fill:'#e2e8f0',stroke:'#475569','stroke-width':2},dev);
+txt(dev,100,55,'Bremsen-','lbl-s',{'text-anchor':'middle'});txt(dev,100,72,'wartungsgerät','lbl-s',{'text-anchor':'middle'});
+const devHose=el('path',{d:'M160,60H420',class:'pb'},bG);const devHoseF=el('path',{d:'M160,60H420',fill:'none',stroke:'#b91c1c','stroke-width':5,opacity:0},bG);
+el('rect',{x:420,y:35,width:140,height:50,rx:6,class:'inkf'},bG);txt(bG,490,65,'Ausgleichsbehälter','lbl-s',{'text-anchor':'middle'});
+const tester=el('g',{'data-tip':'<b>Diagnosetester</b><br>startet die Entlüftungsroutine und steuert dabei Pumpe und Auslassventile an.'},bG);
+el('rect',{x:800,y:20,width:150,height:80,rx:8,fill:'#1f2937'},tester);const tScr=el('rect',{x:812,y:30,width:126,height:44,rx:4,fill:'#334155'},tester);
+const tTxt=txt(tester,875,57,'aus','lbl-s',{'text-anchor':'middle',fill:'#e5e7eb',style:'fill:#e5e7eb'});
+const tCable=el('path',{d:'M800,60H700V185H600',fill:'none',stroke:'#475569','stroke-width':2.5,'stroke-dasharray':'6 4',opacity:0},bG);
+el('path',{d:'M490,85V140',class:'pb'},bG);const hm=el('path',{d:'M490,85V140',fill:'none',stroke:'#b91c1c','stroke-width':5,opacity:0},bG);
+const agg=el('g',{'data-tip':'<b>Hydroaggregat A2.18 mit Steuergerät</b><br>Bei der Entlüftungsroutine werden auch der Pumpenkreis und die Kanäle der Auslassventile entlüftet.'},bG);
+el('rect',{x:380,y:140,width:220,height:90,rx:8,fill:'#e2e8f0',stroke:'#475569','stroke-width':2},agg);
+txt(agg,490,165,'Hydroaggregat A2.18','lbl-s',{'text-anchor':'middle'});
+const aggP=el('circle',{cx:450,cy:200,r:16,class:'inkf'},agg);const aggR=el('g',{class:'rotor'},agg);el('path',{d:'M450,188V212M438,200H462',stroke:'#cbd5e1','stroke-width':3},aggR);
+const aggV=[];for(let i=0;i<4;i++)aggV.push(el('rect',{x:490+i*24,y:188,width:16,height:24,class:'coil'},agg));
+/* Radleitungen */
+const BW4={};
+WHEELS4.forEach(([w,x],i)=>{
+  const d=[`M400,230V280H130V340`,`M450,230V300H370V340`,`M530,230V300H630V340`,`M580,230V280H870V340`][i];
+  el('path',{d,class:'pb'},bG);const f=el('path',{d,fill:'none',stroke:'#b91c1c','stroke-width':5,opacity:0},bG);
+  el('circle',{cx:x,cy:370,r:30,fill:'#fff',stroke:'#1f2937','stroke-width':2.5},bG);el('circle',{cx:x,cy:370,r:16,fill:'none',stroke:'#1f2937','stroke-width':2},bG);
+  txt(bG,x,425,w,'lbl-b',{'text-anchor':'middle'});
+  /* Entlüftungsschlauch + Flasche */
+  el('path',{d:`M${x+28},355H${x+60}V380`,fill:'none',stroke:'#94a3b8','stroke-width':4},bG);
+  const hose=el('path',{d:`M${x+28},355H${x+60}V380`,fill:'none',stroke:'#b91c1c','stroke-width':3,'stroke-dasharray':'3 5',opacity:0},bG);
+  el('rect',{x:x+45,y:380,width:32,height:60,rx:4,fill:'#fff',stroke:'#475569','stroke-width':1.5},bG);
+  const lvl=el('rect',{x:x+47,y:438,width:28,height:0,fill:'#b91c1c',opacity:0.6},bG);
+  const bubbles=el('g',{},bG);
+  const vt=txt(bG,x+61,460,'0,00 l','lbl-s',{'text-anchor':'middle'});
+  const st=txt(bG,x,330,'','lbl-s',{'text-anchor':'middle'});
+  BW4[w]={f,hose,lvl,bubbles,vt,st,x};
+});
+const BSTEPS=[
+  ['Hydraulik-Bauteil erneuert','Nach Eingriffen in die Hydraulik oder dem Austausch von Hydraulikkomponenten muss die Anlage <b>gefüllt und entlüftet</b> werden (Aufgabe 12).'],
+  ['Bremsenwartungsgerät anschließen','Gerät am Ausgleichsbehälter anschließen. Nur <b>freigegebene Bremsflüssigkeit</b> verwenden.'],
+  ['Diagnosetester anschließen, Entlüftungsroutine starten','Der Tester führt durch die Routine und nennt die Reihenfolge der Räder.'],
+  ['Radbremsen entlüften','An jedem Rad die Entlüfterschraube öffnen, bis <b>mindestens 0,5 l</b> durchgelaufen sind <b>und</b> die Flüssigkeit <b>blasenfrei</b> austritt (Aufgabe 13).'],
+  ['Pumpenkreis und Auslassventil-Kanäle entlüften','Der Tester steuert <b>Rückförderpumpe und Auslassventile</b> an – so wird auch die Luft im Hydroaggregat herausgespült. Danach die Räder noch einmal nachentlüften.'],
+  ['Fertig – Abschlussarbeiten','Bremspedal prüfen, Flüssigkeitsstand prüfen, dann die Abschlussarbeiten in der richtigen Reihenfolge (rechts).']
+];
+document.getElementById('bSteps').innerHTML=BSTEPS.map(s=>`<li><b>${s[0]}</b><br><span style="color:var(--mut)">${s[1]}</span></li>`).join('');
+let bWheel=0;
+function bRender(dt){
+  const st=bs.step;
+  document.querySelectorAll('#bSteps li').forEach((li,i)=>{li.classList.toggle('cur',i===st);li.classList.toggle('done',i<st);});
+  devHoseF.setAttribute('opacity',st>=1?0.9:0);hm.setAttribute('opacity',st>=1?0.9:0);
+  tCable.setAttribute('opacity',st>=2?1:0);
+  tTxt.textContent=st<2?'aus':st===2?'Routine gestartet':st===3?'Rad '+WHEELS4[Math.min(bWheel,3)][0]+' entlüften':st===4?'Pumpe + AV aktiv':'Routine beendet';
+  tScr.setAttribute('fill',st>=2?'#065f46':'#334155');
+  const pumpOn=st===4;agg.classList.toggle('run',pumpOn);
+  bs.t+=dt;aggV.forEach((c,i)=>c.classList.toggle('en',pumpOn&&Math.floor(bs.t*3+i)%2===0));
+  WHEELS4.forEach(([w],i)=>{
+    const W=BW4[w];
+    let active=false;
+    if(st===3&&i===bWheel)active=true;
+    if(st===4)active=true;
+    if(active){bs.vol[w]=Math.min(st===4?0.6:0.55,bs.vol[w]+dt*(st===4?0.05:0.12));}
+    if(st===3&&i===bWheel&&bs.vol[w]>=0.55&&bWheel<4){bWheel++;}
+    const v=bs.vol[w];
+    W.f.setAttribute('opacity',st>=1?(v>0||active?0.9:0.4):0);
+    W.hose.setAttribute('opacity',active?1:0);W.hose.style.animation=active?'rev .5s linear infinite':'';
+    const h=Math.min(56,v*95);W.lvl.setAttribute('height',h.toFixed(1));W.lvl.setAttribute('y',(438-h).toFixed(1));
+    W.vt.textContent=fmt(v,2)+' l';
+    const bubbly=(st<4&&v<0.4)||(st===4&&bs.vol[w]<0.58&&Math.floor(bs.t*2)%3===0);
+    W.bubbles.innerHTML='';
+    if(active&&bubbly){for(let k=0;k<3;k++){const yy=380+((bs.t*60+k*20)%55);el('circle',{cx:W.x+56+k*7,cy:438-((bs.t*40+k*17)%50),r:2.5,fill:'#fff',stroke:'#b91c1c'},W.bubbles);}}
+    W.st.textContent=v>=0.5&&!bubbly?'✓ blasenfrei':active?(bubbly?'Luftblasen…':''):'';
+  });
+  document.getElementById('bInfo').textContent=`Schritt ${st+1} von ${BSTEPS.length}`;
+}
+document.getElementById('bNext').addEventListener('click',()=>{if(bs.step===3&&bWheel<4){WHEELS4.forEach(([w])=>bs.vol[w]=Math.max(bs.vol[w],0.55));bWheel=4;}bs.step=Math.min(BSTEPS.length-1,bs.step+1);});
+document.getElementById('bPrev').addEventListener('click',()=>{bs.step=Math.max(0,bs.step-1);if(bs.step<=3){WHEELS4.forEach(([w])=>bs.vol[w]=0);bWheel=0;}});
+/* Reihenfolge-Quiz Abschlussarbeiten (Spalte C) */
+const ORDER=['Bremsflüssigkeitsreste abwischen','Bremsenprüfung durchführen','Fehlerspeicher löschen','Probefahrt durchführen','Sichtkontrolle auf Dichtheit','Fehlerspeicher erneut auslesen','Auftrag abschließen'];
+let oPos=0;
+function oBuild(){
+  oPos=0;const sh=[...ORDER].map((t,i)=>({t,i})).sort(()=>Math.random()-0.5);
+  document.getElementById('oList').innerHTML=sh.map(o=>`<button class="m" data-i="${o.i}">${o.t}</button>`).join('');
+  document.getElementById('oMsg').className='box';document.getElementById('oMsg').textContent='Noch keine Auswahl.';
+  document.querySelectorAll('#oList button').forEach(b=>b.addEventListener('click',()=>{
+    const i=+b.dataset.i,m=document.getElementById('oMsg');
+    if(b.disabled)return;
+    if(i===oPos){b.disabled=true;b.style.background='#dcfce7';b.style.borderColor='#16a34a';b.textContent=(oPos+1)+'. '+ORDER[i];oPos++;
+      m.className='box ok';m.innerHTML=oPos===ORDER.length?'<b>Richtig – alle Schritte in der Reihenfolge von Spalte C!</b>':'Richtig! Nächster Schritt?';}
+    else{m.className='box warn';m.innerHTML=`„${ORDER[i]}“ kommt noch nicht dran. Überlege: Was muss vorher passieren?`;}
+  }));
+}
+document.getElementById('oReset').addEventListener('click',oBuild);oBuild();
+
+/* ===== Tooltip ===== */
+const tip=document.getElementById('tip');
+function showTip(e){const t=e.target&&e.target.closest?e.target.closest('[data-tip]'):null;if(!t){tip.style.opacity=0;return;}
+  tip.innerHTML=t.getAttribute('data-tip');tip.style.opacity=1;
+  tip.style.left=Math.min(e.clientX+14,window.innerWidth-295)+'px';tip.style.top=Math.min(e.clientY+14,window.innerHeight-tip.offsetHeight-8)+'px';}
+document.querySelectorAll('svg.plan').forEach(s=>{s.addEventListener('mousemove',showTip);s.addEventListener('mouseleave',()=>tip.style.opacity=0);
+  s.addEventListener('touchstart',e=>{const t=e.touches[0];showTip({target:document.elementFromPoint(t.clientX,t.clientY),clientX:t.clientX,clientY:t.clientY});},{passive:true});});
+
+/* ===== Loop ===== */
+let last=performance.now(),acc=0;
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  hRender(dt); acc+=dt; if(acc>0.1){acc=0;hPanel();eRender();}
+  psRender(dt); bRender(dt);
+  requestAnimationFrame(loop);
+}
+(function(){const h=decodeURIComponent(location.hash.slice(1)).split('-');
+  const b=document.querySelector(`nav.tabs button[data-tab="${h[0]}"]`);if(b)b.click();
+  if(h[0]==='hyd'&&h[1]){if(h[1]==='fehler'){document.getElementById('fHSV').checked=true;setHMode('esp');}else if(['ruhe','normal','abs','esp'].includes(h[1]))setHMode(h[1]);}
+  if(h[0]==='hyd'&&h[2]==='nr'){document.getElementById('nums').checked=true;H.classList.add('showbadges');}})();
+eRender();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
